@@ -1,0 +1,52 @@
+{
+  "name": "fivopay-crm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fivopay Intelligence & Sales CRM — Manalix Technologies Pvt Ltd",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p ${PORT:-3000}",
+    "db:migrate": "tsx --env-file-if-exists=.env scripts/migrate.ts",
+    "db:seed": "tsx --env-file-if-exists=.env scripts/seed.ts",
+    "worker": "tsx --env-file-if-exists=.env scripts/worker.ts",
+    "backup": "tsx --env-file-if-exists=.env scripts/backup.ts",
+    "test:rbac": "tsx --env-file-if-exists=.env scripts/test-rbac.ts",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:purge-demo": "tsx --env-file-if-exists=.env scripts/purge-demo.ts"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.4",
+    "exceljs": "^4.4.0",
+    "jose": "^6.2.14",
+    "lucide-react": "^1.65.0",
+    "next": "^15.5.28",
+    "nodemailer": "^10.3.1",
+    "papaparse": "^5.7.0",
+    "pdfkit": "^0.20.2",
+    "pg": "^8.23.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "recharts": "^3.10.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^26.6.6",
+    "@types/nodemailer": "^8.0.2",
+    "@types/papaparse": "^5.5.2",
+    "@types/pdfkit": "^0.17.7",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "autoprefixer": "^10.6.2",
+    "drizzle-kit": "^0.31.11",
+    "postcss": "^8.5.32",
+    "tailwindcss": "^3.4.19",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}
