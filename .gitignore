@@ -1,5 +1,5 @@
 backups/
 node_modules/
 .next/
-.env
 *.dump
+
