@@ -29,19 +29,20 @@ export const GET = api<{ id: string }>(["quote.create", "pricing.approve"], asyn
   const done = new Promise<Buffer>((res) => doc.on("end", () => res(Buffer.concat(chunks))));
   const W = doc.page.width - 96;
 
-  // Background subtle watermark with official FIVOPAY logo
+  // Background subtle watermark with official FIVOPAY logo (tilted)
   const watermarkPath = path.join(process.cwd(), "public", "fivopay_logo.png");
   const drawWatermark = () => {
     doc.save();
     doc.opacity(0.08);
     const cx = doc.page.width / 2;
     const cy = doc.page.height / 2;
+    // Tilted diagonal watermark (-30 degrees across page)
+    doc.rotate(-30, { origin: [cx, cy] });
     if (fs.existsSync(watermarkPath)) {
-      const imgWidth = 320;
-      doc.image(watermarkPath, cx - imgWidth / 2, cy - 65, { width: imgWidth });
+      const imgWidth = 380;
+      doc.image(watermarkPath, cx - imgWidth / 2, cy - 75, { width: imgWidth });
     } else {
       doc.fillColor("#0f172a");
-      doc.rotate(-32, { origin: [cx, cy] });
       doc.font("Helvetica-Bold").fontSize(90);
       doc.text("FIVOPAY", 0, cy - 45, { width: doc.page.width, align: "center" });
     }
@@ -122,31 +123,44 @@ export const GET = api<{ id: string }>(["quote.create", "pricing.approve"], asyn
   doc.font("Helvetica-Bold").fontSize(9).fill("#1e293b").text("Payment terms: 100% full payment for One-Time Setup & Migration upon agreement signing.", 52, doc.y + 6);
   doc.y += 6;
 
-  // Bank details for remittance
+  // Bank details for remittance (Clean 4-row grid with no text collisions)
   if (doc.y > 540) doc.addPage();
   y = doc.y + 12;
   doc.font("Helvetica-Bold").fontSize(10).fill("#1d4ed8").text("Bank Details for Remittance (NEFT / RTGS / IMPS)", 48, y);
   y = doc.y + 4;
-  doc.roundedRect(48, y, W, 58, 6).fillAndStroke("#f8fafc", "#cbd5e1");
+  doc.roundedRect(48, y, W, 68, 6).fillAndStroke("#f8fafc", "#cbd5e1");
 
   doc.fill("#334155").font("Helvetica-Bold").fontSize(8.5);
-  doc.text("Beneficiary Name:", 58, y + 8).font("Helvetica").text(S("company.bankBeneficiary") || "SAIKHLEARN & SCHOLAR NEXUS PRIVATE LIMITED", 155, y + 8);
-  doc.font("Helvetica-Bold").text("Bank Name:", 58, y + 22).font("Helvetica").text(S("company.bankName") || "RBL Bank Limited", 155, y + 22);
-  doc.font("Helvetica-Bold").text("Account Number:", 58, y + 36).font("Helvetica-Bold").text(S("company.bankAccount") || "409002566529", 155, y + 36);
+  // Row 1: Full width Beneficiary Name
+  doc.text("Beneficiary Name:", 58, y + 8).font("Helvetica-Bold").fill("#0f172a")
+    .text(S("company.bankBeneficiary") || "SAIKHLEARN & SCHOLAR NEXUS PRIVATE LIMITED", 150, y + 8, { width: W - 110 });
 
-  doc.font("Helvetica-Bold").text("Account Type:", 320, y + 8).font("Helvetica").text(S("company.bankAccountType") || "Current Account", 405, y + 8);
-  doc.font("Helvetica-Bold").text("IFSC Code:", 320, y + 22).font("Helvetica-Bold").text(S("company.bankIfsc") || "RATN0000157", 405, y + 22);
-  doc.font("Helvetica-Bold").text("Branch:", 320, y + 36).font("Helvetica").text(S("company.bankBranch") || "Pune Camp Branch, Moledina Road, Camp, Pune - 411001", 405, y + 36, { width: W - 365 });
+  // Row 2: Bank Name | Account Type
+  doc.font("Helvetica-Bold").fill("#334155").text("Bank Name:", 58, y + 22).font("Helvetica").fill("#0f172a")
+    .text(S("company.bankName") || "RBL Bank Limited", 150, y + 22, { width: 160 });
+  doc.font("Helvetica-Bold").fill("#334155").text("Account Type:", 320, y + 22).font("Helvetica").fill("#0f172a")
+    .text(S("company.bankAccountType") || "Current Account", 395, y + 22, { width: W - 355 });
 
-  doc.y = y + 66;
+  // Row 3: Account Number | IFSC Code
+  doc.font("Helvetica-Bold").fill("#334155").text("Account Number:", 58, y + 36).font("Helvetica-Bold").fill("#0f172a")
+    .text(S("company.bankAccount") || "409002566529", 150, y + 36, { width: 160 });
+  doc.font("Helvetica-Bold").fill("#334155").text("IFSC Code:", 320, y + 36).font("Helvetica-Bold").fill("#0f172a")
+    .text(S("company.bankIfsc") || "RATN0000157", 395, y + 36, { width: W - 355 });
+
+  // Row 4: Full width Branch
+  doc.font("Helvetica-Bold").fill("#334155").text("Branch:", 58, y + 50).font("Helvetica").fill("#0f172a")
+    .text(S("company.bankBranch") || "Pune Camp Branch, Ground Floor 11, Moledina Road, Camp, Pune - 411001", 150, y + 50, { width: W - 110 });
+
+  doc.y = y + 78;
 
   if (doc.y > 640) doc.addPage();
   y = doc.y + 10; doc.font("Helvetica-Bold").fontSize(11).fill("#1d4ed8").text("Commercial terms", 48, y);
-  doc.font("Helvetica").fontSize(9).fill("#0b1220").text(q.terms ?? "", 48, doc.y + 4, { width: W });
+  const displayTerms = (q.terms ?? "").replace(/Implementation fee payable per milestones\.?/gi, "One-Time Setup & Migration fee is payable 100% in advance upon agreement signing.");
+  doc.font("Helvetica").fontSize(9).fill("#0b1220").text(displayTerms, 48, doc.y + 4, { width: W });
   doc.moveDown(0.6).fill("#334155").fontSize(8.5).text(S("pricing.thirdPartyNote"), { width: W });
   doc.moveDown(2).fill("#0b1220").fontSize(9.5).text(`For ${S("company.name")}`, 48).moveDown(2.5).text("Authorised Signatory");
   const fy = doc.page.height - 40;
-  doc.fontSize(7.5).fill("#64748b").text(`CIN ${S("company.cin")} · GSTIN ${S("company.gstin")} · ${S("company.website")}`, 48, fy, { width: W, align: "center" });
+
   doc.end();
   const buf = await done;
   await audit(ctx, "quote_pdf", "quote", id, null, { number: q.number });
