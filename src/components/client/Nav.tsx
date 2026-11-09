@@ -25,10 +25,19 @@ export function Nav({ items, user, unread }: { items: NavItem[]; user: { name: s
     </nav>
   );
   const brand = (
-    <div className="flex items-center gap-2 px-4 py-4">
-      <div className="grid h-8 w-8 place-items-center rounded-lg bg-white/15 text-sm font-bold text-white">F</div>
-      <div><div className="text-sm font-semibold text-white">Fivopay CRM</div><div className="text-[10px] text-white/60">Making Banking Easier</div></div>
-    </div>
+    <Link href="/" className="flex items-center gap-2.5 px-4 py-4 transition hover:opacity-95">
+      <div className="flex h-10 w-11 shrink-0 items-center justify-center rounded-xl bg-white p-1 shadow-sm">
+        <img
+          src="/manalix_logo.svg"
+          alt="Manalix Technologies"
+          className="h-8 w-auto max-w-full object-contain"
+        />
+      </div>
+      <div className="min-w-0">
+        <div className="text-sm font-bold text-white tracking-tight truncate">Fivopay CRM</div>
+        <div className="text-[10px] font-medium text-white/70 truncate">Manalix Technologies</div>
+      </div>
+    </Link>
   );
   const foot = (
     <div className="border-t border-white/10 p-3 text-white">
@@ -43,8 +52,15 @@ export function Nav({ items, user, unread }: { items: NavItem[]; user: { name: s
   return (<>
     <aside className="brand-gradient fixed inset-y-0 left-0 z-30 hidden w-60 flex-col lg:flex">{brand}{list}{foot}</aside>
     <header className="brand-gradient sticky top-0 z-30 flex items-center justify-between px-3 py-2 lg:hidden">
-      <button onClick={() => setOpen(true)} className="rounded p-1.5 text-white" aria-label="Open menu"><Menu /></button>
-      <span className="text-sm font-semibold text-white">Fivopay CRM</span>
+      <div className="flex items-center gap-2">
+        <button onClick={() => setOpen(true)} className="rounded p-1.5 text-white" aria-label="Open menu"><Menu /></button>
+        <Link href="/" className="flex items-center gap-2">
+          <div className="flex h-7 w-8 shrink-0 items-center justify-center rounded-lg bg-white p-0.5 shadow-2xs">
+            <img src="/manalix_logo.svg" alt="Manalix" className="h-6 w-auto object-contain" />
+          </div>
+          <span className="text-sm font-bold text-white">Fivopay CRM</span>
+        </Link>
+      </div>
       <Link href="/notifications" className="relative p-1.5 text-white"><Bell size={20} />{unread > 0 && <span className="absolute right-0 top-0 rounded-full bg-red-500 px-1 text-[10px]">{unread}</span>}</Link>
     </header>
     {open && (

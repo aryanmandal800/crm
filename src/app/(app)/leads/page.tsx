@@ -30,18 +30,27 @@ export default async function Leads({ searchParams }: { searchParams: Promise<Re
   if (sp.vendor) conds.push(eq(t.institutions.vendorClass, sp.vendor as any));
   if (sp.tag) conds.push(sql`${sp.tag} = any(${t.institutions.tags})`);
   const where = and(...conds);
-  const sort = sp.sort === "name" ? asc(t.institutions.legalName) : sp.sort === "members" ? sql`${t.institutions.totalMembers} desc nulls last` : sp.sort === "recent" ? desc(t.institutions.createdAt) : desc(t.institutions.score);
+  const sort =
+    sp.sort === "score"
+      ? desc(t.institutions.score)
+      : sp.sort === "name"
+      ? asc(t.institutions.legalName)
+      : sp.sort === "members"
+      ? sql`${t.institutions.totalMembers} desc nulls last`
+      : sp.sort === "oldest"
+      ? asc(t.institutions.createdAt)
+      : desc(t.institutions.createdAt);
   const page = Math.max(1, Number(sp.page ?? 1));
 
   const base = db.select({
     id: t.institutions.id, leadCode: t.institutions.leadCode, legalName: t.institutions.legalName, city: t.institutions.city,
     type: t.institutionTypes.name, taluka: t.talukas.name, owner: t.users.name, score: t.institutions.score, band: t.institutions.scoreBand,
     members: t.institutions.totalMembers, branches: t.institutions.branchCount, verification: t.institutions.verification,
-    category: t.institutions.opportunityCategory, vendor: t.institutions.cbsVendor,
+    category: t.institutions.opportunityCategory, vendor: t.institutions.cbsVendor, createdAt: t.institutions.createdAt,
   }).from(t.institutions).innerJoin(t.institutionTypes, eq(t.institutionTypes.id, t.institutions.typeId))
     .leftJoin(t.talukas, eq(t.talukas.id, t.institutions.talukaId)).leftJoin(t.users, eq(t.users.id, t.institutions.ownerId));
   const [rows, [{ n }]] = await Promise.all([
-    base.where(where).orderBy(sort).limit(PAGE).offset((page - 1) * PAGE),
+    base.where(where).orderBy(sort, desc(t.institutions.createdAt)).limit(PAGE).offset((page - 1) * PAGE),
     db.select({ n: sql<number>`count(*)::int` }).from(t.institutions).innerJoin(t.institutionTypes, eq(t.institutionTypes.id, t.institutions.typeId)).where(where),
   ]);
   const qs = (patch: Record<string, string | undefined>) => "?" + new URLSearchParams(Object.entries({ ...sp, ...patch }).filter(([, v]) => v) as [string, string][]).toString();
@@ -65,10 +74,20 @@ export default async function Leads({ searchParams }: { searchParams: Promise<Re
       {sel("owner", "Any owner", [{ value: "me", label: "Me" }, { value: "none", label: "Unassigned" }, ...o.users.map((u) => ({ value: u.id, label: u.name }))])}
       {sel("segment", "All segments", [{ value: "primary", label: "Primary credit societies" }, { value: "expansion", label: "Expansion categories" }])}
       {sel("vendor", "Any vendor status", ["CONFIRMED_INCUMBENT", "PROBABLE_INCUMBENT", "UNKNOWN", "NONE_IDENTIFIED"].map((x) => ({ value: x, label: x.replace(/_/g, " ").toLowerCase() })))}
-      {sel("sort", "Sort: score", [{ value: "members", label: "Sort: members" }, { value: "name", label: "Sort: name" }, { value: "recent", label: "Sort: newest" }])}
+      {sel("sort", "Sort: Latest added", [
+        { value: "score", label: "Sort: Lead score" },
+        { value: "name", label: "Sort: Name (A-Z)" },
+        { value: "members", label: "Sort: Members" },
+        { value: "oldest", label: "Sort: Oldest added" },
+      ])}
       <div className="flex gap-2"><button className="btn-primary flex-1">Filter</button><Link href="/leads" className="btn-ghost">Reset</Link></div>
     </form>
-    <LeadTable rows={rows} canAssign={ctx.can("lead.assign")} assignees={assignable(ctx, o.users).map((u) => ({ value: u.id, label: u.name }))} />
+    <LeadTable
+      rows={rows}
+      startIndex={(page - 1) * PAGE}
+      canAssign={ctx.can("lead.assign")}
+      assignees={assignable(ctx, o.users).map((u) => ({ value: u.id, label: u.name }))}
+    />
     <div className="mt-3 flex items-center justify-between text-sm">
       <span className="text-ink-500">Page {page} of {Math.max(1, Math.ceil(n / PAGE))}</span>
       <div className="flex gap-2">

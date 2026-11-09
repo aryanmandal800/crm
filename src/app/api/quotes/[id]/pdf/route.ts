@@ -1,4 +1,6 @@
 import PDFDocument from "pdfkit";
+import path from "node:path";
+import fs from "node:fs";
 import { eq } from "drizzle-orm";
 import { db, t } from "@/db";
 import { api } from "@/lib/api";
@@ -21,13 +23,26 @@ export const GET = api<{ id: string }>(["quote.create", "pricing.approve"], asyn
   const done = new Promise<Buffer>((res) => doc.on("end", () => res(Buffer.concat(chunks))));
   const W = doc.page.width - 96;
 
-  // header band
+  // header band with official Manalix logo
   const g = doc.linearGradient(0, 0, doc.page.width, 0); g.stop(0, "#1d4ed8").stop(0.55, "#06b6d4").stop(1, "#7c3aed");
-  doc.rect(0, 0, doc.page.width, 92).fill(g);
-  doc.fill("#ffffff").font("Helvetica-Bold").fontSize(22).text(S("company.product"), 48, 26);
-  doc.font("Helvetica").fontSize(10).text(S("company.tagline"), 48, 54);
-  doc.fontSize(9).text(S("company.name"), 300, 26, { width: W - 252, align: "right" }).text(S("company.address"), { width: W - 252, align: "right" })
-    .text(`${S("company.phone")} | ${S("company.email")}`, { width: W - 252, align: "right" });
+  doc.rect(0, 0, doc.page.width, 96).fill(g);
+
+  const logoPath = path.join(process.cwd(), "public", "manalix_logo.png");
+  if (fs.existsSync(logoPath)) {
+    // White rounded badge for high-contrast official logo display
+    doc.roundedRect(48, 16, 114, 64, 8).fill("#ffffff");
+    doc.image(logoPath, 52, 20, { fit: [106, 56], align: "center", valign: "center" });
+
+    doc.fill("#ffffff").font("Helvetica-Bold").fontSize(18).text(S("company.product"), 174, 26);
+    doc.font("Helvetica").fontSize(9.5).text(S("company.tagline"), 174, 52);
+  } else {
+    doc.fill("#ffffff").font("Helvetica-Bold").fontSize(22).text(S("company.product"), 48, 26);
+    doc.font("Helvetica").fontSize(10).text(S("company.tagline"), 48, 54);
+  }
+
+  doc.fontSize(8.5).fill("#ffffff").text(S("company.name"), 310, 24, { width: W - 262, align: "right" })
+    .text(S("company.address"), { width: W - 262, align: "right" })
+    .text(`${S("company.phone")} | ${S("company.email")}`, { width: W - 262, align: "right" });
 
   doc.fill("#0b1220").font("Helvetica-Bold").fontSize(16).text("COMMERCIAL QUOTATION", 48, 112);
   if (draft) doc.fill("#b91c1c").fontSize(10).text(`STATUS: ${q.status.replace(/_/g, " ")} — NOT VALID FOR SUBMISSION`, 48, 132);
@@ -49,12 +64,30 @@ export const GET = api<{ id: string }>(["quote.create", "pricing.approve"], asyn
     if (total) { doc.font("Helvetica-Bold").text(total[0], 54, y + 2).text(total[1], 48, y + 2, { width: W - 6, align: "right" }); y += 16; }
     doc.y = y;
   };
-  const monthly = q.lines.filter((l) => l.kind === "MONTHLY"); const once = q.lines.filter((l) => l.kind === "ONE_TIME");
-  const disc = (q.monthlyFee * q.discountPct) / 100; const mNet = q.monthlyFee - disc; const oNet = q.implementationFee + q.migrationFee;
-  table("Monthly subscription", [...monthly.map((l) => [l.name, rs(l.amount)] as [string, string]), ...(disc ? [[`Discount (${q.discountPct}%)`, "- " + rs(disc)] as [string, string]] : []),
-    [`GST @ ${q.gstRate}%`, rs((mNet * q.gstRate) / 100)]], ["Monthly total (incl. GST)", rs(mNet * (1 + q.gstRate / 100))]);
-  table("One-time charges", [...once.map((l) => [l.name, rs(l.amount)] as [string, string]), [`GST @ ${q.gstRate}%`, rs((oNet * q.gstRate) / 100)]], ["One-time total (incl. GST)", rs(oNet * (1 + q.gstRate / 100))]);
-  table("Payment milestones (one-time charges)", q.milestones.map((m) => [`${m.name} — ${m.trigger}`, `${m.pct}% (${rs((oNet * (1 + q.gstRate / 100) * m.pct) / 100)})`]));
+  const monthly = q.lines.filter((l) => l.kind === "MONTHLY");
+  const once = q.lines.filter((l) => l.kind === "ONE_TIME");
+  const setupDiscPct = Number((q as any).setupDiscountPct || 0);
+
+  const monthlyDisc = (q.monthlyFee * q.discountPct) / 100;
+  const mNet = q.monthlyFee - monthlyDisc;
+
+  const oList = once.length > 0 ? once.reduce((acc, l) => acc + l.amount, 0) : (q.implementationFee + q.migrationFee);
+  const setupDisc = (oList * setupDiscPct) / 100;
+  const oNet = oList - setupDisc;
+
+  table("Monthly subscription", [
+    ...monthly.map((l) => [l.name, rs(l.amount)] as [string, string]),
+    ...(monthlyDisc ? [[`Monthly SaaS Discount (${q.discountPct}%)`, "- " + rs(monthlyDisc)] as [string, string]] : []),
+    [`GST @ ${q.gstRate}%`, rs((mNet * q.gstRate) / 100)],
+  ], ["Monthly total (incl. GST)", rs(mNet * (1 + q.gstRate / 100))]);
+
+  table("One-Time Setup & Migration", [
+    ...once.map((l) => [l.name, rs(l.amount)] as [string, string]),
+    ...(setupDisc ? [[`Setup & Migration Discount (${setupDiscPct}%)`, "- " + rs(setupDisc)] as [string, string]] : []),
+    [`GST @ ${q.gstRate}%`, rs((oNet * q.gstRate) / 100)],
+  ], ["One-time total (incl. GST)", rs(oNet * (1 + q.gstRate / 100))]);
+
+  table("Payment milestones (One-Time Setup & Migration)", q.milestones.map((m) => [`${m.name} — ${m.trigger}`, `${m.pct}% (${rs((oNet * (1 + q.gstRate / 100) * m.pct) / 100)})`]));
 
   if (doc.y > 640) doc.addPage();
   y = doc.y + 14; doc.font("Helvetica-Bold").fontSize(11).fill("#1d4ed8").text("Commercial terms", 48, y);

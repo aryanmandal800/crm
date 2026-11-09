@@ -1,4 +1,4 @@
-import { asc } from "drizzle-orm";
+import { asc, isNull } from "drizzle-orm";
 import { db, t } from "@/db";
 import { requirePage } from "@/lib/auth";
 import { allSettings } from "@/lib/settings";
@@ -20,12 +20,43 @@ const moduleFields = [
 
 export default async function Catalogue({ searchParams }: { searchParams: Promise<{ members?: string; branches?: string }> }) {
   const ctx = await requirePage("pricing.view", "pricing.config"); const sp = await searchParams;
-  const [mods, slabs, s] = await Promise.all([db.select().from(t.productModules).orderBy(asc(t.productModules.sortOrder)), db.select().from(t.pricingSlabs).orderBy(asc(t.pricingSlabs.minMembers)), allSettings()]);
+  const [mods, slabs, s, leads] = await Promise.all([
+    db.select().from(t.productModules).orderBy(asc(t.productModules.sortOrder)),
+    db.select().from(t.pricingSlabs).orderBy(asc(t.pricingSlabs.minMembers)),
+    allSettings(),
+    db
+      .select({
+        id: t.institutions.id,
+        legalName: t.institutions.legalName,
+        leadCode: t.institutions.leadCode,
+        members: t.institutions.totalMembers,
+        branches: t.institutions.branchCount,
+      })
+      .from(t.institutions)
+      .where(isNull(t.institutions.deletedAt))
+      .orderBy(asc(t.institutions.legalName))
+      .limit(200),
+  ]);
   const cfg = ctx.can("pricing.config") && !ctx.grant;
   const pf = settingFields("PRICING", s);
   return (<>
     <PageHeader title="Product & pricing catalogue" sub="All prices are editable assumptions — not verified market rates. Third-party costs are billed at actuals." />
-    <Card title="Pricing calculator" className="mb-4"><PricingCalculator members={Number(sp.members || 5000)} branches={Number(sp.branches || 3)} modules={mods.filter((m) => m.active).map((m) => ({ value: m.key, label: m.name }))} /></Card>
+    <Card title="Interactive Pricing Calculator & Quotation Studio" className="mb-4">
+      <PricingCalculator
+        members={Number(sp.members || 5000)}
+        branches={Number(sp.branches || 3)}
+        institutions={leads}
+        modules={mods.filter((m) => m.active).map((m) => ({
+          value: m.key,
+          label: m.name,
+          category: m.category,
+          price: m.price,
+          pricingType: m.pricingType,
+          description: m.description,
+          isCore: m.isCore,
+        }))}
+      />
+    </Card>
     <div className="grid gap-4 lg:grid-cols-2">
       <Card title="Member slabs (₹/member/month)">
         <Table head={["Members", "Rate"]}>{slabs.map((x) => <tr key={x.id}><td className="td">{x.label ?? `${x.minMembers}–${x.maxMembers ?? "∞"}`}</td><td className="td">₹{x.ratePerMember}</td></tr>)}</Table>
@@ -38,13 +69,13 @@ export default async function Catalogue({ searchParams }: { searchParams: Promis
           : <dl className="space-y-1 text-sm">{pf.fields.filter((f) => f.type === "number").map((f) => <div key={f.name} className="flex justify-between"><dt className="text-ink-500">{f.label}</dt><dd>{String(pf.initial[f.name])}</dd></div>)}</dl>}
       </Card>
     </div>
-    <Card title="Modules" className="mt-4">
-      <Table head={["Module", "Category", "Pricing", "Notes", ""]}>
+    <Card title="Modules & Pricing Catalogue" className="mt-4">
+      <Table head={["Module", "Category", "Monthly Price", "Description", ""]}>
         {mods.map((m) => <tr key={m.id}><td className="td"><b>{m.name}</b><div className="text-xs text-ink-500">{m.key}</div></td><td className="td text-xs">{m.category}{m.isCore && <> <Badge v="HIGH">core</Badge></>}{!m.active && <> <Badge v="LOW">inactive</Badge></>}</td>
-          <td className="td text-xs">{m.pricingType === "INCLUDED" ? "Included" : `${inr(m.price)} ${m.pricingType.replace("_", " ").toLowerCase()}`}</td><td className="td text-xs text-ink-500">{m.notes}</td>
+          <td className="td text-xs font-semibold text-brand-700">{m.pricingType === "INCLUDED" ? "Included in Base" : `${inr(m.price)} / mo`}</td><td className="td text-xs text-ink-500">{m.description || m.notes}</td>
           <td className="td">{cfg && <Disclosure label="Edit"><JsonForm action={`/api/catalogue/modules/${m.id}`} method="PATCH" fields={moduleFields} initial={m} /></Disclosure>}</td></tr>)}
       </Table>
-      {cfg && <Disclosure label="Add module"><JsonForm action="/api/catalogue/modules" fields={moduleFields} initial={{ category: "DIGITAL", pricingType: "FLAT_MONTHLY", price: 0, active: true }} /></Disclosure>}
+      {cfg && <Disclosure label="Add module"><JsonForm action="/api/catalogue/modules" fields={moduleFields} initial={{ category: "DIGITAL", pricingType: "FLAT_MONTHLY", price: 5000, active: true }} /></Disclosure>}
     </Card>
   </>);
 }

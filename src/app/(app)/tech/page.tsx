@@ -49,7 +49,7 @@ export default async function Tech() {
     <div className="grid gap-4 lg:grid-cols-2">
       <Card title="Integrations & configuration">
         <dl className="space-y-1 text-sm">
-          {[["AI insights engine", `${s.get("ai.provider")} · model ${s.get("ai.model")} · API key ${process.env.ANTHROPIC_API_KEY ? "present" : "not set"}`],
+          {[["AI insights engine", `${s.get("ai.provider")} · model ${s.get("ai.model")} · Keys: Gemini ${process.env.GEMINI_API_KEY ? "present" : "not set"}, Anthropic ${process.env.ANTHROPIC_API_KEY ? "present" : "not set"}`],
             ["Email (SMTP)", `${s.get("notify.emailEnabled") ? "enabled" : "disabled"} · ${process.env.SMTP_HOST ? `host ${process.env.SMTP_HOST}` : "SMTP_HOST not set"}`],
             ["Session lifetime", `${process.env.SESSION_HOURS ?? 12}h · secure cookies ${process.env.NODE_ENV === "production" && process.env.COOKIE_SECURE !== "false" ? "on" : "off"}`],
             ["Backup directory", String(s.get("backup.dir"))], ["Backup retention", `${s.get("backup.retentionDays")} days`],

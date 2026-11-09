@@ -49,8 +49,8 @@ export const SETTING_DEFAULTS: Record<string, SettingDef> = {
   "sales.quoteNextSerial": { value: 40, category: "SALES", label: "Next quote serial", description: "Continues the existing register (039 was last used)." },
   "sales.verificationIntervalDays": { value: 180, category: "SALES", label: "Re-verify research every N days" },
 
-  "ai.provider": { value: "RULES", category: "AI", label: "Insight engine (RULES or ANTHROPIC)", ownerRole: "TECH_ADMIN", description: "API key is read from ANTHROPIC_API_KEY env var, never stored in the database." },
-  "ai.model": { value: "claude-sonnet-5-5", category: "AI", label: "LLM model id", ownerRole: "TECH_ADMIN" },
+  "ai.provider": { value: "GEMINI", category: "AI", label: "Insight engine (GEMINI, ANTHROPIC, or RULES)", ownerRole: "TECH_ADMIN", description: "GEMINI uses GEMINI_API_KEY with Google Search Grounding to extract real website data and insights." },
+  "ai.model": { value: "gemini-2.5-flash", category: "AI", label: "LLM model id", ownerRole: "TECH_ADMIN" },
   "ai.maxTokens": { value: 1500, category: "AI", label: "LLM max output tokens", ownerRole: "TECH_ADMIN" },
   "notify.emailEnabled": { value: false, category: "NOTIFY", label: "Send email notifications (SMTP_* env vars)", ownerRole: "TECH_ADMIN" },
   "notify.followupReminders": { value: true, category: "NOTIFY", label: "Daily follow-up reminders", ownerRole: "TECH_ADMIN" },

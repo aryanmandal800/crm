@@ -1,0 +1,1 @@
+ALTER TABLE "quotes" ADD COLUMN "setup_discount_pct" numeric(5, 2) DEFAULT 0 NOT NULL;

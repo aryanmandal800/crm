@@ -13,20 +13,47 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
   const q = await db.query.quotes.findFirst({ where: eq(t.quotes.id, id), with: { institution: true, createdBy: true } }); if (!q) notFound();
   if (!(await getInstitutionOr404(ctx, q.institutionId).catch(() => null))) notFound();
   const [appr] = await db.select().from(t.approvalRequests).where(eq(t.approvalRequests.entityId, id));
-  const net = q.monthlyFee * (1 - q.discountPct / 100); const once = q.implementationFee + q.migrationFee;
+  const setupDisc = Number((q as any).setupDiscountPct || 0);
+  const net = q.monthlyFee * (1 - q.discountPct / 100);
+  const onceList = q.implementationFee + q.migrationFee;
+  const once = onceList * (1 - setupDisc / 100);
   const canSend = (ctx.can("quote.send") || ctx.can("pricing.approve")) && ["DRAFT", "APPROVED"].includes(q.status);
   return (<>
-    <PageHeader title={q.number} sub={<span className="flex items-center gap-2"><Link className="link" href={`/leads/${q.institutionId}`}>{q.institution.legalName}</Link><Badge v={q.status} /></span>} actions={<>
-      <a href={`/api/quotes/${id}/pdf`} target="_blank" className="btn-primary">PDF</a>
-      {canSend && <ActionButton url={`/api/quotes/${id}/status`} body={{ action: "send" }} label="Mark sent" />}
-      {q.status === "SENT" && <><ActionButton url={`/api/quotes/${id}/status`} body={{ action: "accept" }} label="Accepted" /><ActionButton url={`/api/quotes/${id}/status`} body={{ action: "reject" }} label="Rejected" /></>}
-      {["DRAFT", "PENDING_APPROVAL", "APPROVED"].includes(q.status) && <ActionButton url={`/api/quotes/${id}/status`} body={{ action: "cancel" }} label="Cancel" confirm="Cancel this quote? The number stays in the register." />}
-    </>} />
+    <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-ink-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-3.5">
+        <div className="flex h-14 w-28 shrink-0 items-center justify-center rounded-xl border border-ink-100 bg-white p-1.5 shadow-2xs">
+          <img src="/manalix_logo.svg" alt="Manalix Technologies" className="h-full w-auto object-contain" />
+        </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-extrabold text-ink-950 tracking-tight">{q.number}</h1>
+            <Badge v={q.status} />
+          </div>
+          <p className="text-xs text-ink-600 mt-0.5">
+            Commercial Proposal for <Link className="link font-semibold text-brand-700" href={`/leads/${q.institutionId}`}>{q.institution.legalName}</Link>
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <a href={`/api/quotes/${id}/pdf`} target="_blank" className="btn-primary flex items-center gap-1.5 shadow-2xs hover:shadow-md transition">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          <span>Download PDF Quotation</span>
+        </a>
+        {canSend && <ActionButton url={`/api/quotes/${id}/status`} body={{ action: "send" }} label="Mark sent" />}
+        {q.status === "SENT" && <><ActionButton url={`/api/quotes/${id}/status`} body={{ action: "accept" }} label="Accepted" /><ActionButton url={`/api/quotes/${id}/status`} body={{ action: "reject" }} label="Rejected" /></>}
+        {["DRAFT", "PENDING_APPROVAL", "APPROVED"].includes(q.status) && <ActionButton url={`/api/quotes/${id}/status`} body={{ action: "cancel" }} label="Cancel" confirm="Cancel this quote? The number stays in the register." />}
+      </div>
+    </div>
     {appr && <Card title="Pricing approval" className="mb-4"><div className="flex flex-wrap items-center gap-2 text-sm"><Badge v={appr.status} /><span>{appr.summary}</span>{appr.decisionNote && <span className="text-ink-500">— {appr.decisionNote}</span>}{appr.status === "PENDING" && ctx.can("pricing.approve") && <Link href="/approvals" className="link">Decide →</Link>}</div></Card>}
     <div className="grid gap-4 lg:grid-cols-3">
       <Card title="Lines" className="lg:col-span-2">
         {q.lines.map((l) => <div key={l.key} className="flex justify-between border-b border-ink-100 py-1 text-sm"><span>{l.name}{l.kind === "ONE_TIME" ? " (one-time)" : " / month"}</span><span className="tabular-nums">{inr(l.amount)}</span></div>)}
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4"><Fact k="Monthly net" v={inr(net)} /><Fact k="One-time" v={inr(once)} /><Fact k="Discount" v={`${q.discountPct}%`} /><Fact k={`GST ${q.gstRate}%`} v="Extra" /></div>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Fact k="Monthly Net SaaS" v={`${inr(net)}${q.discountPct > 0 ? ` (${q.discountPct}% off)` : ""}`} />
+          <Fact k="One-Time Setup & Migration" v={`${inr(once)}${setupDisc > 0 ? ` (${setupDisc}% off)` : ""}`} />
+          <Fact k="Annual Value (ARR)" v={inr(net * 12)} />
+          <Fact k={`GST ${q.gstRate}%`} v="Extra" />
+        </div>
         {q.scope && <p className="mt-3 text-sm"><b>Scope:</b> {q.scope}</p>}
         <p className="mt-3 whitespace-pre-wrap text-xs text-ink-700">{q.terms}</p>
       </Card>

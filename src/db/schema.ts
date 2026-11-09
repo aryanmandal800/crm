@@ -210,10 +210,28 @@ export const institutions = pgTable("institutions", {
 ]);
 
 export type ScoreLine = { key: string; name: string; max: number; points: number; reason: string; missing?: string[] };
+export type YearWiseMetric = {
+  year: string;
+  milestone?: string | null;
+  deposits?: number | null;
+  loans?: number | null;
+  netWorth?: number | null;
+  turnover?: number | null;
+  profit?: number | null;
+  members?: number | null;
+  branches?: number | null;
+};
+
 export type Insights = {
   whyApproach: string; whyNow: string; painPoint: string; evidence: string[]; missing: string[];
   influencers: string; modules: string[]; price: string; blockers: string; nextAction: string;
   disclaimer: string;
+  growthTrajectory?: string | null;
+  yearWiseMetrics?: YearWiseMetric[] | null;
+  cdRatio?: number | null;
+  crar?: number | null;
+  workingCapital?: number | null;
+  investments?: number | null;
 };
 
 export const contacts = pgTable("contacts", {
@@ -443,6 +461,7 @@ export const quotes = pgTable("quotes", {
   implementationFee: money("implementation_fee").notNull().default(0),
   migrationFee: money("migration_fee").notNull().default(0),
   discountPct: numeric("discount_pct", { precision: 5, scale: 2, mode: "number" }).notNull().default(0),
+  setupDiscountPct: numeric("setup_discount_pct", { precision: 5, scale: 2, mode: "number" }).notNull().default(0),
   gstRate: numeric("gst_rate", { precision: 5, scale: 2, mode: "number" }).notNull().default(18),
   terms: text("terms"),
   milestones: jsonb("milestones").$type<Milestone[]>().notNull().default([]),

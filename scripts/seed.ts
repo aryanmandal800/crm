@@ -64,23 +64,29 @@ const PARAMS: [string, string, number, string][] = [
   ["financial", "Financial / commercial capacity", 10, "Deposits (else total assets)"], ["strategic_fit", "Strategic fit for Fivopay", 10, "Segment, district, vertical"],
 ];
 
-// Fivopay capabilities as stated by the company. Add-on prices are ASSUMPTIONS to be edited in the catalogue.
+// Fivopay capabilities as stated by the company. Modules priced 5k-10k per month.
 const MODULES: [string, string, string, string, number, boolean, string?][] = [
-  ["CBS", "Core Banking System (CBS)", "CORE", "INCLUDED", 0, true], ["MEMBERS", "Member management & digital membership", "CORE", "INCLUDED", 0, true],
-  ["DEPOSITS", "Deposit & savings management", "CORE", "INCLUDED", 0, true], ["LOS", "Loan Origination System (LOS)", "CORE", "INCLUDED", 0, true],
-  ["LMS", "Loan Management System (LMS)", "CORE", "INCLUDED", 0, true], ["EMI", "EMI & repayment management", "CORE", "INCLUDED", 0, true],
-  ["ACCOUNTING", "Accounting & financial reporting", "CORE", "INCLUDED", 0, true], ["BRANCH_USERS", "Branch & user management", "CORE", "INCLUDED", 0, true],
-  ["MULTI_BRANCH", "Multi-branch operations", "CORE", "INCLUDED", 0, true], ["MIS", "MIS & operational reporting", "CORE", "INCLUDED", 0, true],
-  ["DIRECTOR_DASHBOARD", "Management & director dashboards", "CORE", "INCLUDED", 0, true], ["AUDIT_CONTROLS", "Audit trails & role-based controls", "CORE", "INCLUDED", 0, true],
-  ["MEMBER_APP", "Member mobile application", "DIGITAL", "INCLUDED", 0, false],
-  ["AGENT_APP", "Agent / DSA application", "DIGITAL", "FLAT_MONTHLY", 2000, false, "ASSUMPTION price"],
-  ["WHITE_LABEL", "White-label mobile applications", "DIGITAL", "ONE_TIME", 50000, false, "ASSUMPTION price; store publishing in institution's name"],
-  ["EKYC", "eKYC & digital onboarding", "INTEGRATION", "INCLUDED", 0, false, "Provider: ZoopSign. Per-verification charges billed at actuals."],
-  ["ESIGN", "eSign & eStamp", "INTEGRATION", "INCLUDED", 0, false, "Provider: ZoopSign. Usage billed at actuals."],
-  ["PAYMENTS", "Payment collection integrations", "INTEGRATION", "INCLUDED", 0, false, "Payment engine: Easebuzz. Gateway charges at actuals."],
-  ["API", "API & third-party integrations", "INTEGRATION", "INCLUDED", 0, false, "Setup priced per integration in pricing engine"],
-  ["SHARIAH", "Ethical / Shariah banking functionality", "CORE", "INCLUDED", 0, false, "Where applicable"],
-  ["MIGRATION", "Legacy CBS data migration", "SERVICE", "INCLUDED", 0, false, "Priced via migration complexity in pricing engine"],
+  ["CBS", "Core Banking System (CBS)", "CORE", "INCLUDED", 0, true, "Core platform base"],
+  ["MEMBERS", "Member management & digital membership", "CORE", "FLAT_MONTHLY", 5000, true, "Member share registry, dividend distribution & voting rights"],
+  ["DEPOSITS", "Deposit & savings management", "CORE", "FLAT_MONTHLY", 6000, true, "FD, RD, pigmy & savings accounts with auto-renewal"],
+  ["LOS", "Loan Origination System (LOS)", "CORE", "FLAT_MONTHLY", 7000, true, "Digital loan origination & committee approvals"],
+  ["LMS", "Loan Management System (LMS)", "CORE", "FLAT_MONTHLY", 8000, true, "End-to-end loan management & recovery tracking"],
+  ["EMI", "EMI & repayment management", "CORE", "FLAT_MONTHLY", 5000, true, "Automated EMI schedules & repayment automation"],
+  ["ACCOUNTING", "Accounting & financial reporting", "CORE", "FLAT_MONTHLY", 7000, true, "Day book, cash book, trial balance, P&L & balance sheet"],
+  ["BRANCH_USERS", "Branch & user management", "CORE", "FLAT_MONTHLY", 5000, true, "Granular role-based security & cash counter limits"],
+  ["MULTI_BRANCH", "Multi-branch operations", "CORE", "FLAT_MONTHLY", 7500, true, "Real-time branch synchronization & centralized audit"],
+  ["MIS", "MIS & operational reporting", "CORE", "FLAT_MONTHLY", 5000, true, "Automated regulatory reporting (RCS / RBI returns)"],
+  ["DIRECTOR_DASHBOARD", "Management & director dashboards", "CORE", "FLAT_MONTHLY", 5000, true, "Live executive analytics & portfolio health"],
+  ["AUDIT_CONTROLS", "Audit trails & role-based controls", "CORE", "FLAT_MONTHLY", 5000, true, "Tamper-proof audit trails & maker-checker workflows"],
+  ["MEMBER_APP", "Member mobile application", "DIGITAL", "FLAT_MONTHLY", 8000, false, "Dedicated Android & iOS member banking app with passbook & QR"],
+  ["AGENT_APP", "Agent / DSA application", "DIGITAL", "FLAT_MONTHLY", 6000, false, "Daily collection app with Bluetooth thermal printer support"],
+  ["WHITE_LABEL", "White-label mobile applications", "DIGITAL", "FLAT_MONTHLY", 10000, false, "Custom Play Store / App Store publishing in institution's name"],
+  ["EKYC", "eKYC & digital onboarding", "INTEGRATION", "FLAT_MONTHLY", 6000, false, "Paperless Aadhaar OTP & biometric verification engine"],
+  ["ESIGN", "eSign & eStamp", "INTEGRATION", "FLAT_MONTHLY", 5000, false, "Legally compliant Aadhaar eSign & digital loan agreement stamping"],
+  ["PAYMENTS", "Payment collection integrations", "INTEGRATION", "FLAT_MONTHLY", 7500, false, "UPI QR collection & payment gateway integration"],
+  ["API", "API & third-party integrations", "INTEGRATION", "FLAT_MONTHLY", 8000, false, "Open Banking APIs & core banking connector gateway"],
+  ["SHARIAH", "Ethical / Shariah banking functionality", "CORE", "FLAT_MONTHLY", 10000, false, "Islamic & ethical banking compliance modules"],
+  ["MIGRATION", "Legacy CBS data migration", "SERVICE", "INCLUDED", 0, false, "Included under One-Time Setup & Migration tier"],
 ];
 
 const SLABS: [number, number | null, number, string][] = [[0, 5000, 5, "Up to 5,000"], [5001, 20000, 4.5, "5,001–20,000"], [20001, 50000, 4, "20,001–50,000"], [50001, null, 3.5, "50,001+"]];
@@ -129,13 +135,18 @@ async function main() {
     const exists = await db.select().from(t.users).where(eq(t.users.email, email));
     if (exists.length) return exists[0];
     const password = pw ?? randomBytes(9).toString("base64url") + "7";
-    const [u] = await db.insert(t.users).values({ name, email, roleId: roles[role], passwordHash: await bcrypt.hash(password, 12), mustChangePassword: true, ...extra }).returning();
+    const [u] = await db.insert(t.users).values({ name, email, roleId: roles[role], passwordHash: await bcrypt.hash(password, 12), mustChangePassword: pw ? false : true, ...extra }).returning();
     created.push(`${role.padEnd(16)} ${email}  temporary password: ${password}`);
     return u;
   }
-  await user("Amin (Founder & CEO)", process.env.SEED_FOUNDER_EMAIL ?? "amin@fivopay.com", "SUPER_ADMIN", { isFounder: true }, process.env.SEED_FOUNDER_PASSWORD);
-  await user("Aryan", process.env.SEED_TECH_EMAIL ?? "aryan@fivopay.com", "TECH_ADMIN");
-  const priya = await user("Priya", process.env.SEED_SALES_EMAIL ?? "priya@fivopay.com", "SALES_EXEC", { teamId: team.id });
+  await user("Amin (Founder & CEO)", process.env.SEED_FOUNDER_EMAIL ?? "amin@fivopay.com", "SUPER_ADMIN", { isFounder: true }, process.env.SEED_FOUNDER_PASSWORD ?? "Amin@123");
+  await user("Aryan (Tech Admin)", process.env.SEED_TECH_EMAIL ?? "aryan@fivopay.com", "TECH_ADMIN", {}, process.env.SEED_TECH_PASSWORD ?? "Aryan@123");
+  const priya = await user("Priya (Sales Exec)", process.env.SEED_SALES_EMAIL ?? "priya@fivopay.com", "SALES_EXEC", { teamId: team.id }, process.env.SEED_SALES_PASSWORD ?? "Priya@123");
+
+  // Direct role logins requested: CEO, Tech, Sales
+  await user("CEO / Super Admin", "ceo@fivopay.com", "SUPER_ADMIN", { isFounder: true }, "Ceo@1234");
+  await user("Tech Administrator", "tech@fivopay.com", "TECH_ADMIN", {}, "Tech@1234");
+  await user("Sales Executive", "sales@fivopay.com", "SALES_EXEC", { teamId: team.id }, "Sales@1234");
 
   if (process.env.SEED_DEMO === "true") await seedDemo(pune.id, priya.id);
 

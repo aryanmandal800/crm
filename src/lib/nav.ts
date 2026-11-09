@@ -16,6 +16,7 @@ const ITEMS: (NavItem & { any: Permission[] | "*" })[] = [
   { href: "/lost-deals", label: "Lost deals & objections", group: "Sales", any: ["deal.view"] },
   { href: "/onboarding", label: "Customer onboarding", group: "Sales", any: ["onboarding.view"] },
   { href: "/competitors", label: "Competitor intelligence", group: "Intelligence", any: ["competitor.view"] },
+  { href: "/society-finder", label: "Society finder", group: "Intelligence", any: "*" },
   { href: "/sources", label: "Research sources", group: "Intelligence", any: ["research.edit"] },
   { href: "/catalogue", label: "Products & pricing", group: "Intelligence", any: ["pricing.view", "pricing.config"] },
   { href: "/performance", label: "Team performance", group: "Reports", any: ["performance.view.all", "performance.view.team", "performance.view.own"] },
