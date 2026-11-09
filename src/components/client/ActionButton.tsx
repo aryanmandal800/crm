@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
 /** One-click API action (approve, delete, rescore…) with optional confirm/prompt. */
 export function ActionButton({ url, method = "POST", body, label, busyLabel, confirm, prompt, promptKey = "note", className = "btn-ghost", redirectTo, download }: {
@@ -20,5 +21,17 @@ export function ActionButton({ url, method = "POST", body, label, busyLabel, con
       if (redirectTo) router.push(redirectTo.replace("{id}", j.id ?? "")); else router.refresh();
     } finally { setBusy(false); }
   }
-  return <span className="inline-flex flex-col"><button type="button" className={className} disabled={busy} onClick={go}>{busy ? (busyLabel ?? "…") : label}</button>{err && <span className="mt-1 max-w-xs text-xs text-red-600">{err}</span>}</span>;
+  return (
+    <span className="inline-flex flex-col">
+      <button type="button" className={className} disabled={busy} onClick={go}>
+        {busy ? (
+          <span className="inline-flex items-center gap-1.5">
+            <Loader2 size={13} className="animate-spin inline" />
+            {busyLabel ?? "Processing…"}
+          </span>
+        ) : label}
+      </button>
+      {err && <span className="mt-1 max-w-xs text-xs text-red-600">{err}</span>}
+    </span>
+  );
 }

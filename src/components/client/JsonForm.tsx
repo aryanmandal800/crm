@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import clsx from "clsx";
+import { Loader2 } from "lucide-react";
 
 export type FieldDef = {
   name: string; label: string; type?: "text" | "number" | "textarea" | "select" | "checkbox" | "date" | "datetime" | "email" | "password" | "multiselect" | "tags" | "hidden" | "json";
@@ -94,7 +95,16 @@ export function JsonForm({ action, method = "POST", fields, initial = {}, submit
         </div>
       )}
       {msg && <p className="rounded-lg bg-emerald-50 p-2 text-sm text-emerald-700">{msg}</p>}
-      <button className="btn-primary" disabled={busy}>{busy ? "Saving…" : submitLabel}</button>
+      <button className="btn-primary inline-flex items-center gap-1.5" disabled={busy}>
+        {busy ? (
+          <>
+            <Loader2 size={15} className="animate-spin" />
+            <span>Saving changes…</span>
+          </>
+        ) : (
+          submitLabel
+        )}
+      </button>
     </form>
   );
 }

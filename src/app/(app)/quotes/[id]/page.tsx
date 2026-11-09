@@ -58,7 +58,17 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
         <p className="mt-3 whitespace-pre-wrap text-xs text-ink-700">{q.terms}</p>
       </Card>
       <Card title="Details"><dl className="space-y-2"><Fact k="Model" v={q.model} /><Fact k="Members / branches" v={`${q.members.toLocaleString("en-IN")} / ${q.branches}`} /><Fact k="Valid until" v={dt(q.validUntil)} />
-        <Fact k="Prepared by" v={q.createdBy.name} /><Fact k="Milestones" v={q.milestones.map((m) => `${m.name} ${m.pct}%`).join(", ")} /></dl></Card>
+        <Fact k="Prepared by" v={q.createdBy.name} /><Fact k="Payment terms" v="100% Upfront (One-time Full Payment)" /></dl></Card>
+      <Card title="Bank Remittance Details (NEFT / RTGS / IMPS)" className="lg:col-span-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+          <Fact k="Beneficiary Name" v="SAIKHLEARN & SCHOLAR NEXUS PRIVATE LIMITED" />
+          <Fact k="Bank Name" v="RBL Bank Limited" />
+          <Fact k="Account Number" v="409002566529" />
+          <Fact k="Account Type" v="Current Account" />
+          <Fact k="IFSC Code" v="RATN0000157" />
+          <Fact k="Branch" v="Pune Camp Branch, Moledina Road, Camp, Pune - 411001" />
+        </div>
+      </Card>
     </div>
   </>);
 }

@@ -11,6 +11,12 @@ const securityHeaders = [
 const config = {
   poweredByHeader: false,
   serverExternalPackages: ["pdfkit", "exceljs", "pg", "bcryptjs"],
+  outputFileTracingIncludes: {
+    "/api/**/*": [
+      "./node_modules/pdfkit/**/*",
+      "./public/**/*",
+    ],
+  },
   devIndicators: false,
   async headers() { return [{ source: "/(.*)", headers: securityHeaders }]; },
 };

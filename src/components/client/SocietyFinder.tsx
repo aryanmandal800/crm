@@ -805,6 +805,50 @@ export function SocietyFinderClient() {
         </form>
       </div>
 
+      {/* Rich loading screen during Google Places API Search */}
+      {loading && (
+        <div className="card p-8 border-brand-200 bg-white/95 text-center space-y-4 shadow-sm animate-in fade-in duration-200">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-brand-600 via-sky-500 to-indigo-600 text-white shadow-lg shadow-brand-500/25">
+            <Loader2 className="animate-spin" size={28} />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-ink-900">
+              Querying Google Places PAN-India Registry...
+            </h3>
+            <p className="text-xs text-ink-600 max-w-md mx-auto">
+              Scanning cooperative credit societies, urban banks, and societies for PIN <span className="font-semibold text-brand-700">{pin || "Target Area"}</span> with real-time geolocation.
+            </p>
+          </div>
+          {/* Skeleton place cards */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 pt-3 text-left">
+            {[1, 2, 3, 4, 5, 6].map((idx) => (
+              <div key={idx} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="h-4 w-24 animate-pulse rounded-full bg-slate-200" />
+                  <div className="h-3 w-12 animate-pulse rounded bg-slate-200" />
+                </div>
+                <div className="h-5 w-4/5 animate-pulse rounded bg-slate-200" />
+                <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
+                <div className="h-3 w-2/3 animate-pulse rounded bg-slate-100" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Saving Overlay */}
+      {bulkSaving && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-sky-300 bg-sky-50 p-4 text-sky-950 shadow-sm animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <Loader2 className="animate-spin text-brand-600 shrink-0" size={20} />
+            <div>
+              <h4 className="text-sm font-semibold">Saving Societies to CRM Leads...</h4>
+              <p className="text-xs text-sky-800">Assigning unique lead codes, geolocation coordinates, and deduplicating records.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Error alert */}
       {error && (
         <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-900">

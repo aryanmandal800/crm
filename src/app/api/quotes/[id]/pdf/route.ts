@@ -9,6 +9,12 @@ import { allSettings } from "@/lib/settings";
 import { notFound } from "@/lib/errors";
 import { audit } from "@/lib/audit";
 
+// Explicit static font references to guarantee Vercel NFT bundles standard fonts
+import "pdfkit/standard-fonts/Helvetica";
+import "pdfkit/standard-fonts/HelveticaBold";
+import "pdfkit/standard-fonts/HelveticaOblique";
+import "pdfkit/standard-fonts/HelveticaBoldOblique";
+
 const rs = (n: number) => "Rs. " + Math.round(n).toLocaleString("en-IN");
 const d = (x: Date | null) => (x ? x.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "-");
 
@@ -23,36 +29,62 @@ export const GET = api<{ id: string }>(["quote.create", "pricing.approve"], asyn
   const done = new Promise<Buffer>((res) => doc.on("end", () => res(Buffer.concat(chunks))));
   const W = doc.page.width - 96;
 
+  // Background subtle watermark with official FIVOPAY logo
+  const watermarkPath = path.join(process.cwd(), "public", "fivopay_logo.png");
+  const drawWatermark = () => {
+    doc.save();
+    doc.opacity(0.08);
+    const cx = doc.page.width / 2;
+    const cy = doc.page.height / 2;
+    if (fs.existsSync(watermarkPath)) {
+      const imgWidth = 320;
+      doc.image(watermarkPath, cx - imgWidth / 2, cy - 65, { width: imgWidth });
+    } else {
+      doc.fillColor("#0f172a");
+      doc.rotate(-32, { origin: [cx, cy] });
+      doc.font("Helvetica-Bold").fontSize(90);
+      doc.text("FIVOPAY", 0, cy - 45, { width: doc.page.width, align: "center" });
+    }
+    doc.restore();
+  };
+  drawWatermark();
+  doc.on("pageAdded", () => {
+    drawWatermark();
+  });
+
   // header band with official Manalix logo
   const g = doc.linearGradient(0, 0, doc.page.width, 0); g.stop(0, "#1d4ed8").stop(0.55, "#06b6d4").stop(1, "#7c3aed");
-  doc.rect(0, 0, doc.page.width, 96).fill(g);
+  doc.rect(0, 0, doc.page.width, 102).fill(g);
 
   const logoPath = path.join(process.cwd(), "public", "manalix_logo.png");
   if (fs.existsSync(logoPath)) {
     // White rounded badge for high-contrast official logo display
-    doc.roundedRect(48, 16, 114, 64, 8).fill("#ffffff");
-    doc.image(logoPath, 52, 20, { fit: [106, 56], align: "center", valign: "center" });
+    doc.roundedRect(48, 16, 114, 70, 8).fill("#ffffff");
+    doc.image(logoPath, 52, 20, { fit: [106, 62], align: "center", valign: "center" });
 
-    doc.fill("#ffffff").font("Helvetica-Bold").fontSize(18).text(S("company.product"), 174, 26);
-    doc.font("Helvetica").fontSize(9.5).text(S("company.tagline"), 174, 52);
+    doc.fill("#ffffff").font("Helvetica-Bold").fontSize(18).text(S("company.product"), 174, 28);
+    doc.font("Helvetica").fontSize(9.5).text(S("company.tagline"), 174, 54);
   } else {
-    doc.fill("#ffffff").font("Helvetica-Bold").fontSize(22).text(S("company.product"), 48, 26);
-    doc.font("Helvetica").fontSize(10).text(S("company.tagline"), 48, 54);
+    doc.fill("#ffffff").font("Helvetica-Bold").fontSize(22).text(S("company.product"), 48, 28);
+    doc.font("Helvetica").fontSize(10).text(S("company.tagline"), 48, 56);
   }
 
-  doc.fontSize(8.5).fill("#ffffff").text(S("company.name"), 310, 24, { width: W - 262, align: "right" })
-    .text(S("company.address"), { width: W - 262, align: "right" })
-    .text(`${S("company.phone")} | ${S("company.email")}`, { width: W - 262, align: "right" });
+  // Header top-right with CIN, GSTIN, 10 Biz Park address
+  doc.fontSize(8.5).font("Helvetica-Bold").fill("#ffffff").text(S("company.name"), 250, 18, { width: W - 202, align: "right" });
+  doc.font("Helvetica").fontSize(7.5).fill("#f8fafc")
+    .text(`CIN: ${S("company.cin")} · GSTIN: ${S("company.gstin")}`, { width: W - 202, align: "right" })
+    .text(S("company.address"), { width: W - 202, align: "right" })
+    .text(`Ph: ${S("company.phone")} | Email: ${S("company.email")}`, { width: W - 202, align: "right" });
 
-  doc.fill("#0b1220").font("Helvetica-Bold").fontSize(16).text("COMMERCIAL QUOTATION", 48, 112);
-  if (draft) doc.fill("#b91c1c").fontSize(10).text(`STATUS: ${q.status.replace(/_/g, " ")} — NOT VALID FOR SUBMISSION`, 48, 132);
+  doc.fill("#0b1220").font("Helvetica-Bold").fontSize(16).text("COMMERCIAL QUOTATION", 48, 118);
+  if (draft) doc.fill("#b91c1c").fontSize(10).text(`STATUS: ${q.status.replace(/_/g, " ")} — NOT VALID FOR SUBMISSION`, 48, 138);
   doc.fill("#334155").font("Helvetica").fontSize(9.5);
-  const y0 = 150;
+  const y0 = 154;
   doc.text(`Quote No: ${q.number}`, 48, y0).text(`Date: ${d(q.createdAt)}`).text(`Valid until: ${d(q.validUntil)}`).text(`Prepared by: ${q.createdBy.name}`);
   doc.font("Helvetica-Bold").text("To:", 320, y0).font("Helvetica").text(q.institution.legalName, 320, doc.y, { width: W - 272 })
     .text(q.institution.address ?? "", { width: W - 272 });
 
-  let y = Math.max(doc.y, 215) + 12;
+  let y = Math.max(doc.y, 220) + 12;
   doc.font("Helvetica-Bold").fontSize(11).fill("#1d4ed8").text("Scope", 48, y); y = doc.y + 4;
   doc.font("Helvetica").fontSize(9.5).fill("#0b1220").text(q.scope || `Fivopay cloud core banking platform for ${q.members.toLocaleString("en-IN")} members across ${q.branches} branch(es), including: ${q.modules.join(", ") || "core modules"}.`, 48, y, { width: W });
 
@@ -87,10 +119,29 @@ export const GET = api<{ id: string }>(["quote.create", "pricing.approve"], asyn
     [`GST @ ${q.gstRate}%`, rs((oNet * q.gstRate) / 100)],
   ], ["One-time total (incl. GST)", rs(oNet * (1 + q.gstRate / 100))]);
 
-  table("Payment milestones (One-Time Setup & Migration)", q.milestones.map((m) => [`${m.name} — ${m.trigger}`, `${m.pct}% (${rs((oNet * (1 + q.gstRate / 100) * m.pct) / 100)})`]));
+  doc.font("Helvetica-Bold").fontSize(9).fill("#1e293b").text("Payment terms: 100% full payment for One-Time Setup & Migration upon agreement signing.", 52, doc.y + 6);
+  doc.y += 6;
+
+  // Bank details for remittance
+  if (doc.y > 540) doc.addPage();
+  y = doc.y + 12;
+  doc.font("Helvetica-Bold").fontSize(10).fill("#1d4ed8").text("Bank Details for Remittance (NEFT / RTGS / IMPS)", 48, y);
+  y = doc.y + 4;
+  doc.roundedRect(48, y, W, 58, 6).fillAndStroke("#f8fafc", "#cbd5e1");
+
+  doc.fill("#334155").font("Helvetica-Bold").fontSize(8.5);
+  doc.text("Beneficiary Name:", 58, y + 8).font("Helvetica").text(S("company.bankBeneficiary") || "SAIKHLEARN & SCHOLAR NEXUS PRIVATE LIMITED", 155, y + 8);
+  doc.font("Helvetica-Bold").text("Bank Name:", 58, y + 22).font("Helvetica").text(S("company.bankName") || "RBL Bank Limited", 155, y + 22);
+  doc.font("Helvetica-Bold").text("Account Number:", 58, y + 36).font("Helvetica-Bold").text(S("company.bankAccount") || "409002566529", 155, y + 36);
+
+  doc.font("Helvetica-Bold").text("Account Type:", 320, y + 8).font("Helvetica").text(S("company.bankAccountType") || "Current Account", 405, y + 8);
+  doc.font("Helvetica-Bold").text("IFSC Code:", 320, y + 22).font("Helvetica-Bold").text(S("company.bankIfsc") || "RATN0000157", 405, y + 22);
+  doc.font("Helvetica-Bold").text("Branch:", 320, y + 36).font("Helvetica").text(S("company.bankBranch") || "Pune Camp Branch, Moledina Road, Camp, Pune - 411001", 405, y + 36, { width: W - 365 });
+
+  doc.y = y + 66;
 
   if (doc.y > 640) doc.addPage();
-  y = doc.y + 14; doc.font("Helvetica-Bold").fontSize(11).fill("#1d4ed8").text("Commercial terms", 48, y);
+  y = doc.y + 10; doc.font("Helvetica-Bold").fontSize(11).fill("#1d4ed8").text("Commercial terms", 48, y);
   doc.font("Helvetica").fontSize(9).fill("#0b1220").text(q.terms ?? "", 48, doc.y + 4, { width: W });
   doc.moveDown(0.6).fill("#334155").fontSize(8.5).text(S("pricing.thirdPartyNote"), { width: W });
   doc.moveDown(2).fill("#0b1220").fontSize(9.5).text(`For ${S("company.name")}`, 48).moveDown(2.5).text("Authorised Signatory");

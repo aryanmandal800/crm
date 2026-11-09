@@ -65,9 +65,10 @@ export function QuoteBuilder(p: {
 
   const [scope, setScope] = useState("");
   const [terms, setTerms] = useState(p.terms);
-  const [ms, setMs] = useState(JSON.stringify(p.milestones, null, 1));
+  const [ms, setMs] = useState(JSON.stringify(p.milestones?.length ? p.milestones : [{ name: "Advance on signing", pct: 100, trigger: "Agreement execution / 100% upfront payment" }], null, 1));
   const [just, setJust] = useState("");
   const [calc, setCalc] = useState<any>(null);
+  const [calculating, setCalculating] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [filterCat, setFilterCat] = useState<string>("ALL");
@@ -75,6 +76,7 @@ export function QuoteBuilder(p: {
   const set = (k: string, x: any) => setV((s) => ({ ...s, [k]: x }));
 
   useEffect(() => {
+    setCalculating(true);
     const h = setTimeout(async () => {
       try {
         const res = await fetch("/api/pricing/calc", {
@@ -91,10 +93,15 @@ export function QuoteBuilder(p: {
         }
       } catch (e: any) {
         setErr(e?.message || "Failed to calculate quote");
+      } finally {
+        setCalculating(false);
       }
     }, 200);
 
-    return () => clearTimeout(h);
+    return () => {
+      clearTimeout(h);
+      setCalculating(false);
+    };
   }, [v]);
 
   async function save() {
@@ -601,13 +608,9 @@ export function QuoteBuilder(p: {
               onChange={(e) => setTerms(e.target.value)}
             />
           </div>
-          <div>
-            <label className="lbl">Payment Milestones (JSON, must total 100%)</label>
-            <textarea
-              className="input min-h-[75px] font-mono text-xs"
-              value={ms}
-              onChange={(e) => setMs(e.target.value)}
-            />
+          <div className="rounded-lg border border-brand-200 bg-brand-50/60 p-3">
+            <span className="text-xs font-semibold text-brand-900 block mb-0.5">Implementation Payment Terms</span>
+            <span className="text-xs text-brand-700">100% Full Payment upon signing (One-Time Setup & Migration upfront)</span>
           </div>
           {calc?.needsApproval && (
             <div>
@@ -627,9 +630,14 @@ export function QuoteBuilder(p: {
       <div className="lg:col-span-5">
         <div className="card sticky top-16 space-y-3 p-5 text-sm shadow-md border-brand-200">
           <div className="flex items-center justify-between border-b border-ink-100 pb-2.5">
-            <h2 className="text-base font-bold text-ink-900">Commercial Calculation</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-ink-900">Commercial Calculation</h2>
+              {calculating && <Loader2 size={14} className="animate-spin text-brand-600" />}
+            </div>
             <span className="text-xs text-ink-500 font-mono">
-              {calc
+              {calculating
+                ? "Calculating…"
+                : calc
                 ? calc.model === "MONTHLY_SLAB"
                   ? "Monthly Member Slab"
                   : "Module-Wise Plan"
