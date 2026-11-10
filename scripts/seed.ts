@@ -157,10 +157,9 @@ async function main() {
   await user("Aryan (Tech Admin)", process.env.SEED_TECH_EMAIL ?? "aryan@fivopay.com", "TECH_ADMIN", {}, process.env.SEED_TECH_PASSWORD ?? "Aryan@123");
   const priya = await user("Priya (BDM)", process.env.SEED_SALES_EMAIL ?? "priya@fivopay.com", "BDM", { teamId: team.id }, process.env.SEED_SALES_PASSWORD ?? "Priya@123");
 
-  // Direct role logins requested: CEO, Tech, Sales
+  // Direct role logins requested: CEO, Tech
   await user("CEO / Super Admin", "ceo@fivopay.com", "SUPER_ADMIN", { isFounder: true }, "Ceo@1234");
   await user("Tech Administrator", "tech@fivopay.com", "TECH_ADMIN", {}, "Tech@1234");
-  await user("Sales Executive", "sales@fivopay.com", "SALES_EXEC", { teamId: team.id }, "Sales@1234");
 
   if (process.env.SEED_DEMO === "true") await seedDemo(pune.id, priya.id);
 

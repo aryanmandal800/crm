@@ -39,7 +39,7 @@ async function mkUser(key: string, roleKey: string, teamId: string | null = null
 async function main() {
   const [team] = await db.insert(t.teams).values({ name: "RBAC Test Team" }).onConflictDoUpdate({ target: t.teams.name, set: { region: "test" } }).returning();
   const admin = await mkUser("admin", "SUPER_ADMIN"), tech = await mkUser("tech", "TECH_ADMIN"), mgr = await mkUser("mgr", "SALES_MANAGER", team.id);
-  const exec = await mkUser("exec", "SALES_EXEC", team.id), exec2 = await mkUser("exec2", "SALES_EXEC"), analyst = await mkUser("analyst", "RESEARCH_ANALYST");
+  const exec = await mkUser("exec", "BDM", team.id), exec2 = await mkUser("exec2", "BDM"), analyst = await mkUser("analyst", "RESEARCH_ANALYST");
   await db.update(t.teams).set({ managerId: mgr.id }).where(eq(t.teams.id, team.id));
   await db.update(t.dataAccessGrants).set({ revokedAt: new Date() }).where(eq(t.dataAccessGrants.userId, tech.id));
   const [founder] = await db.select().from(t.users).where(eq(t.users.isFounder, true));

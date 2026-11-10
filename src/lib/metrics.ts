@@ -177,5 +177,5 @@ export async function todayBySalesperson(owners: string[] | null) {
       count(a.id) filter (where a.decision_maker_reached) as dms, count(a.id) filter (where a.type_key in ('MEETING','DEMO') and a.status = 'DONE') as meetings,
       string_agg(distinct i.legal_name, ', ') filter (where a.status = 'DONE') as institutions
     from users u join roles r on r.id = u.role_id left join activities a on a.user_id = u.id and a.occurred_at >= ${since} left join institutions i on i.id = a.institution_id
-    where u.active and r.key in ('SALES_EXEC','SALES_MANAGER','BDM') and ${inOwners(sql`u.id`, owners)} group by u.id order by u.name`);
+    where u.active and r.key in ('SALES_MANAGER','BDM') and ${inOwners(sql`u.id`, owners)} group by u.id order by u.name`);
 }

@@ -86,12 +86,6 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       "deal.view", "deal.create", "deal.edit", "pricing.view", "quote.create", "quote.send", "competitor.view", "onboarding.view",
       "tasks.manage", "reports.view.team", "performance.view.team", "performance.view.own", "cr.create"],
   },
-  SALES_EXEC: {
-    name: "Sales Executive",
-    description: "Assigned leads, activities, stages, follow-ups, draft quotations, own performance.",
-    permissions: ["lead.view.own", "lead.create", "lead.edit", "contact.edit", "activity.create", "deal.view", "deal.create", "deal.edit",
-      "pricing.view", "quote.create", "competitor.view", "performance.view.own"],
-  },
   RESEARCH_ANALYST: {
     name: "Research Analyst",
     description: "Adds and validates institutions, sources, evidence, vendors. No commercial pricing.",
