@@ -79,6 +79,13 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       "deal.view", "deal.create", "deal.edit", "pricing.view", "quote.create", "quote.send", "competitor.view", "onboarding.view",
       "tasks.manage", "reports.view.team", "performance.view.team", "cr.create"],
   },
+  BDM: {
+    name: "Business Development Manager (BDM)",
+    description: "Institutional business development, pipeline lead qualification, discovery meetings, product demos, pricing proposals & deals.",
+    permissions: ["lead.view.team", "lead.create", "lead.edit", "lead.assign", "research.edit", "contact.edit", "activity.create",
+      "deal.view", "deal.create", "deal.edit", "pricing.view", "quote.create", "quote.send", "competitor.view", "onboarding.view",
+      "tasks.manage", "reports.view.team", "performance.view.team", "performance.view.own", "cr.create"],
+  },
   SALES_EXEC: {
     name: "Sales Executive",
     description: "Assigned leads, activities, stages, follow-ups, draft quotations, own performance.",

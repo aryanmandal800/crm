@@ -69,10 +69,14 @@ export default async function Catalogue({ searchParams }: { searchParams: Promis
           : <dl className="space-y-1 text-sm">{pf.fields.filter((f) => f.type === "number").map((f) => <div key={f.name} className="flex justify-between"><dt className="text-ink-500">{f.label}</dt><dd>{String(pf.initial[f.name])}</dd></div>)}</dl>}
       </Card>
     </div>
-    <Card title="Modules & Pricing Catalogue" className="mt-4">
-      <Table head={["Module", "Category", "Monthly Price", "Description", ""]}>
-        {mods.map((m) => <tr key={m.id}><td className="td"><b>{m.name}</b><div className="text-xs text-ink-500">{m.key}</div></td><td className="td text-xs">{m.category}{m.isCore && <> <Badge v="HIGH">core</Badge></>}{!m.active && <> <Badge v="LOW">inactive</Badge></>}</td>
-          <td className="td text-xs font-semibold text-brand-700">{m.pricingType === "INCLUDED" ? "Included in Base" : `${inr(m.price)} / mo`}</td><td className="td text-xs text-ink-500">{m.description || m.notes}</td>
+    <Card title={`Modules & Pricing Catalogue (${mods.length} CBS Modules)`} className="mt-4">
+      <Table head={["#", "Module", "Category", "Monthly Price", "Description", ""]}>
+        {mods.map((m) => <tr key={m.id}>
+          <td className="td text-xs font-mono text-ink-400 w-12 font-semibold">#{String((m.sortOrder ?? 0) + 1).padStart(2, "0")}</td>
+          <td className="td"><b>{m.name}</b><div className="text-xs text-ink-500 font-mono">{m.key}</div></td>
+          <td className="td text-xs">{m.category}{m.isCore && <> <Badge v="HIGH">core</Badge></>}{!m.active && <> <Badge v="LOW">inactive</Badge></>}</td>
+          <td className="td text-xs font-semibold text-brand-700 whitespace-nowrap">{m.pricingType === "INCLUDED" ? "Included in Base" : `${inr(m.price)} / mo`}</td>
+          <td className="td text-xs text-ink-600 max-w-md">{m.description || m.notes}</td>
           <td className="td">{cfg && <Disclosure label="Edit"><JsonForm action={`/api/catalogue/modules/${m.id}`} method="PATCH" fields={moduleFields} initial={m} /></Disclosure>}</td></tr>)}
       </Table>
       {cfg && <Disclosure label="Add module"><JsonForm action="/api/catalogue/modules" fields={moduleFields} initial={{ category: "DIGITAL", pricingType: "FLAT_MONTHLY", price: 5000, active: true }} /></Disclosure>}

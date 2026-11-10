@@ -64,29 +64,37 @@ const PARAMS: [string, string, number, string][] = [
   ["financial", "Financial / commercial capacity", 10, "Deposits (else total assets)"], ["strategic_fit", "Strategic fit for Fivopay", 10, "Segment, district, vertical"],
 ];
 
-// Fivopay capabilities as stated by the company. Modules priced 5k-10k per month.
+// Fivopay – CBS Modules (29 standardized core, digital & integration banking modules priced ₹5k to ₹10k/mo)
 const MODULES: [string, string, string, string, number, boolean, string?][] = [
-  ["CBS", "Core Banking System (CBS)", "CORE", "INCLUDED", 0, true, "Core platform base"],
-  ["MEMBERS", "Member management & digital membership", "CORE", "FLAT_MONTHLY", 5000, true, "Member share registry, dividend distribution & voting rights"],
-  ["DEPOSITS", "Deposit & savings management", "CORE", "FLAT_MONTHLY", 6000, true, "FD, RD, pigmy & savings accounts with auto-renewal"],
-  ["LOS", "Loan Origination System (LOS)", "CORE", "FLAT_MONTHLY", 7000, true, "Digital loan origination & committee approvals"],
-  ["LMS", "Loan Management System (LMS)", "CORE", "FLAT_MONTHLY", 8000, true, "End-to-end loan management & recovery tracking"],
-  ["EMI", "EMI & repayment management", "CORE", "FLAT_MONTHLY", 5000, true, "Automated EMI schedules & repayment automation"],
-  ["ACCOUNTING", "Accounting & financial reporting", "CORE", "FLAT_MONTHLY", 7000, true, "Day book, cash book, trial balance, P&L & balance sheet"],
-  ["BRANCH_USERS", "Branch & user management", "CORE", "FLAT_MONTHLY", 5000, true, "Granular role-based security & cash counter limits"],
-  ["MULTI_BRANCH", "Multi-branch operations", "CORE", "FLAT_MONTHLY", 7500, true, "Real-time branch synchronization & centralized audit"],
-  ["MIS", "MIS & operational reporting", "CORE", "FLAT_MONTHLY", 5000, true, "Automated regulatory reporting (RCS / RBI returns)"],
-  ["DIRECTOR_DASHBOARD", "Management & director dashboards", "CORE", "FLAT_MONTHLY", 5000, true, "Live executive analytics & portfolio health"],
-  ["AUDIT_CONTROLS", "Audit trails & role-based controls", "CORE", "FLAT_MONTHLY", 5000, true, "Tamper-proof audit trails & maker-checker workflows"],
-  ["MEMBER_APP", "Member mobile application", "DIGITAL", "FLAT_MONTHLY", 8000, false, "Dedicated Android & iOS member banking app with passbook & QR"],
-  ["AGENT_APP", "Agent / DSA application", "DIGITAL", "FLAT_MONTHLY", 6000, false, "Daily collection app with Bluetooth thermal printer support"],
-  ["WHITE_LABEL", "White-label mobile applications", "DIGITAL", "FLAT_MONTHLY", 10000, false, "Custom Play Store / App Store publishing in institution's name"],
-  ["EKYC", "eKYC & digital onboarding", "INTEGRATION", "FLAT_MONTHLY", 6000, false, "Paperless Aadhaar OTP & biometric verification engine"],
-  ["ESIGN", "eSign & eStamp", "INTEGRATION", "FLAT_MONTHLY", 5000, false, "Legally compliant Aadhaar eSign & digital loan agreement stamping"],
-  ["PAYMENTS", "Payment collection integrations", "INTEGRATION", "FLAT_MONTHLY", 7500, false, "UPI QR collection & payment gateway integration"],
-  ["API", "API & third-party integrations", "INTEGRATION", "FLAT_MONTHLY", 8000, false, "Open Banking APIs & core banking connector gateway"],
-  ["SHARIAH", "Ethical / Shariah banking functionality", "CORE", "FLAT_MONTHLY", 10000, false, "Islamic & ethical banking compliance modules"],
-  ["MIGRATION", "Legacy CBS data migration", "SERVICE", "INCLUDED", 0, false, "Included under One-Time Setup & Migration tier"],
+  ["MEMBERS", "Member Management", "CORE", "FLAT_MONTHLY", 5000, true, "Member share registry, digital membership lifecycle, KYC profile & voting rights"],
+  ["SHARE_MGMT", "Share Management", "CORE", "FLAT_MONTHLY", 5500, true, "Share capital allotment, share certificates, transfer, surrender, nominal & regular share registry"],
+  ["ACCOUNT_MGMT", "Account Management", "CORE", "FLAT_MONTHLY", 6500, true, "Savings, current, recurring & term account operations, nominee setup & joint-holder controls"],
+  ["DEPOSITS", "Deposit Management", "CORE", "FLAT_MONTHLY", 7500, true, "Fixed deposits (FD), Recurring deposits (RD), Pigmy/Daily deposits, auto-renewal & deposit lien"],
+  ["LOAN_MGMT", "Loan Management", "CORE", "FLAT_MONTHLY", 9000, true, "End-to-end loan life cycle: application, sanctioning, disbursement, security lien & closure"],
+  ["INTEREST_MGMT", "Interest Management", "CORE", "FLAT_MONTHLY", 6000, true, "Configurable interest tables, auto-accrual, compound interest, penal interest & subsidy accounting"],
+  ["EMI", "EMI Management", "CORE", "FLAT_MONTHLY", 5500, true, "Flexible amortisation schedules, reducing vs flat rate EMI, moratorium & prepayment handling"],
+  ["RECOVERY_MGMT", "Recovery Management", "CORE", "FLAT_MONTHLY", 7000, true, "Overdue tracking, automated demand notices, legal notice dispatch, guarantor notices & field recovery"],
+  ["AGENT_MGMT", "Agent Management", "DIGITAL", "FLAT_MONTHLY", 7500, false, "Pigmy / daily collection agent tracking, Bluetooth thermal printer support & commission automation"],
+  ["BRANCH_MGMT", "Branch Management", "CORE", "FLAT_MONTHLY", 6000, true, "Multi-branch synchronization, inter-branch transactions, cash counter vaults & cash in transit"],
+  ["GL_MGMT", "General Ledger Management", "CORE", "FLAT_MONTHLY", 8000, true, "Chart of accounts, hierarchical sub-ledgers, multi-tier GL structure & automatic journal postings"],
+  ["ACCOUNTING", "Accounting Management", "CORE", "FLAT_MONTHLY", 8500, true, "Day book, cash book, bank book, journal vouchers, trial balance, P&L account & balance sheet"],
+  ["PAYMENTS", "Payment Management", "INTEGRATION", "FLAT_MONTHLY", 8000, false, "UPI QR collections, payment gateway integrations, vendor payouts, utility bills & BBPS"],
+  ["FUND_TRANSFER", "Fund Transfer Management", "INTEGRATION", "FLAT_MONTHLY", 7000, false, "NEFT, RTGS, IMPS settlement, NACH / e-NACH mandates & sponsor bank switch integrations"],
+  ["DIVIDEND_MGMT", "Dividend Management", "CORE", "FLAT_MONTHLY", 5000, true, "Annual dividend calculation, AGM approval tracking, auto-credit to savings accounts & warrant printing"],
+  ["EKYC", "Onboarding & KYC Management", "INTEGRATION", "FLAT_MONTHLY", 7500, false, "Paperless digital onboarding, Aadhaar OTP eKYC, PAN verification, CKYC search & document OCR"],
+  ["DOCUMENT_MGMT", "Document Management", "CORE", "FLAT_MONTHLY", 5500, true, "Digital locker for member identity proofs, loan security documents, title deeds & branch archives"],
+  ["AUDIT_MGMT", "Audit Management", "CORE", "FLAT_MONTHLY", 6500, true, "Statutory audit logs, concurrent audit verification, transaction vouchers inspection & sampling tools"],
+  ["COMPLIANCE_MGMT", "Compliance Management", "CORE", "FLAT_MONTHLY", 7000, true, "RCS / State Cooperative Act filings, AML/CFT screening, CTR & STR reporting, regulatory limits tracking"],
+  ["USER_ROLE_MGMT", "User & Role Management", "CORE", "FLAT_MONTHLY", 5000, true, "Granular role-based access control (RBAC), multi-factor authentication, IP whitelisting & user activity log"],
+  ["MAKER_CHECKER", "Maker-Checker Management", "CORE", "FLAT_MONTHLY", 5500, true, "Dual authorization workflow for high-value cash transactions, loan disbursements, GL edits & vouchers"],
+  ["MIS", "Reports & MIS", "CORE", "FLAT_MONTHLY", 6500, true, "Over 150+ operational, management, regulatory and financial reports in PDF and Excel formats"],
+  ["RECONCILIATION", "Reconciliation Management", "CORE", "FLAT_MONTHLY", 7000, true, "Automated bank statement reconciliation, switch reconciliation, payment gateway settlement & dispute logs"],
+  ["INTERNET_BANKING", "Internet Banking", "DIGITAL", "FLAT_MONTHLY", 10000, false, "Secure web banking portal for members: view balance, mini-statement, fund transfer & service requests"],
+  ["NOTIFICATIONS", "Notification Management", "DIGITAL", "FLAT_MONTHLY", 5500, false, "Omnichannel transaction alerts via SMS gateway, WhatsApp Business API, email alerts & push notifications"],
+  ["NPA_MGMT", "NPA Management", "CORE", "FLAT_MONTHLY", 8500, true, "Asset classification (SMA-0/1/2, Sub-Standard, Doubtful, Loss), provisioning norms & recovery tracking"],
+  ["TAX_TDS_MGMT", "Tax & TDS Management", "CORE", "FLAT_MONTHLY", 6000, true, "Section 194A deposit interest TDS deduction, 15G/15H form management, Form 16A generation & GST invoicing"],
+  ["FIXED_ASSETS", "Fixed Asset Management", "CORE", "FLAT_MONTHLY", 5500, true, "Asset registry, barcode/tagging, straight-line & WDV depreciation calculation, disposal & insurance tracking"],
+  ["BACKUP_MGMT", "Database & Backup Management", "CORE", "FLAT_MONTHLY", 7500, true, "Automated hourly database snapshots, point-in-time recovery (PITR), disaster recovery & encrypted replication"],
 ];
 
 const SLABS: [number, number | null, number, string][] = [[0, 5000, 5, "Up to 5,000"], [5001, 20000, 4.5, "5,001–20,000"], [20001, 50000, 4, "20,001–50,000"], [50001, null, 3.5, "50,001+"]];
@@ -120,7 +128,13 @@ async function main() {
   await upsertByKey(t.lostReasons, LOST.map(([key, name]) => ({ key, name })));
   await upsertByKey(t.activityTypes, ACT_TYPES.map(([key, name, countsAsCall], i) => ({ key, name, countsAsCall, sortOrder: i })));
   await upsertByKey(t.scoringParameters, PARAMS.map(([key, name, maxScore, guidance], i) => ({ key, name, maxScore, guidance, sortOrder: i })));
-  await upsertByKey(t.productModules, MODULES.map(([key, name, category, pricingType, price, isCore, notes], i) => ({ key, name, category, pricingType, price, isCore, notes, sortOrder: i })));
+  for (const [i, [key, name, category, pricingType, price, isCore, notes]] of MODULES.entries()) {
+    await db.insert(t.productModules).values({ key, name, category, pricingType, price, isCore, notes, description: notes, sortOrder: i, active: true })
+      .onConflictDoUpdate({
+        target: t.productModules.key,
+        set: { name, category, pricingType, price, isCore, notes, description: notes, sortOrder: i, active: true },
+      });
+  }
   if ((await db.select().from(t.pricingSlabs)).length === 0)
     await db.insert(t.pricingSlabs).values(SLABS.map(([minMembers, maxMembers, ratePerMember, label]) => ({ minMembers, maxMembers, ratePerMember, label })));
   if ((await db.select().from(t.qualificationQuestions)).length === 0)
@@ -141,7 +155,7 @@ async function main() {
   }
   await user("Amin (Founder & CEO)", process.env.SEED_FOUNDER_EMAIL ?? "amin@fivopay.com", "SUPER_ADMIN", { isFounder: true }, process.env.SEED_FOUNDER_PASSWORD ?? "Amin@123");
   await user("Aryan (Tech Admin)", process.env.SEED_TECH_EMAIL ?? "aryan@fivopay.com", "TECH_ADMIN", {}, process.env.SEED_TECH_PASSWORD ?? "Aryan@123");
-  const priya = await user("Priya (Sales Exec)", process.env.SEED_SALES_EMAIL ?? "priya@fivopay.com", "SALES_EXEC", { teamId: team.id }, process.env.SEED_SALES_PASSWORD ?? "Priya@123");
+  const priya = await user("Priya (BDM)", process.env.SEED_SALES_EMAIL ?? "priya@fivopay.com", "BDM", { teamId: team.id }, process.env.SEED_SALES_PASSWORD ?? "Priya@123");
 
   // Direct role logins requested: CEO, Tech, Sales
   await user("CEO / Super Admin", "ceo@fivopay.com", "SUPER_ADMIN", { isFounder: true }, "Ceo@1234");

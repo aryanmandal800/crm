@@ -305,7 +305,7 @@ export function PricingCalculator({
                     </span>
                   </div>
                   <p className="mt-1.5 text-[11px] text-ink-600 leading-relaxed">
-                    Subscription is billed strictly as <b>Members × Slab Rate</b> (₹3.5 to ₹5/member/mo). <b>All 19+ Core & Digital modules included</b> with no separate add-on charges.
+                    Subscription is billed strictly as <b>Members × Slab Rate</b> (₹3.5 to ₹5/member/mo). <b>All 29 CBS Core & Digital modules included</b> with no separate add-on charges.
                   </p>
                 </div>
                 <div className="mt-2.5 pt-2 border-t border-ink-100 text-[10px] font-semibold text-brand-700 flex items-center gap-1">

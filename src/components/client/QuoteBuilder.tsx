@@ -210,7 +210,7 @@ export function QuoteBuilder(p: {
                   </span>
                 </div>
                 <p className="mt-1 text-[11px] text-ink-600 leading-relaxed">
-                  Billed strictly as <b>Members × Slab Rate</b> (₹3.5 to ₹5/member/mo). All 19+ modules included with no add-on charges.
+                  Billed strictly as <b>Members × Slab Rate</b> (₹3.5 to ₹5/member/mo). All 29 CBS modules included with no add-on charges.
                 </p>
               </div>
               <div className="mt-2 pt-1.5 border-t border-ink-100 text-[10px] font-semibold text-brand-700 flex items-center gap-1">
@@ -370,7 +370,7 @@ export function QuoteBuilder(p: {
                   <span>3. Member Slabs & Included Capabilities</span>
                 </span>
                 <p className="text-[11px] text-emerald-700 mt-0.5">
-                  All 19+ Core & Digital modules are bundled inside the monthly member slab rate.
+                  All 29 CBS Core & Digital modules are bundled inside the monthly member slab rate.
                 </p>
               </div>
               <span className="rounded-full bg-emerald-600 text-white px-2 py-0.5 text-[11px] font-bold">
