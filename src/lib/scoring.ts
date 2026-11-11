@@ -164,9 +164,9 @@ export async function rescore(ids?: string[]) {
       .where(and(inArray(t.activities.institutionId, pid), eq(t.activities.decisionMakerReached, true)));
     const engaged = new Set(eng.map((e) => e.id));
     for (const inst of part) {
-      const ty = types.get(inst.typeId);
+      const ty = inst.typeId ? types.get(inst.typeId) : undefined;
       const r = scoreInstitution({
-        inst, typeKey: ty?.key ?? "", typePrimary: !!ty?.isPrimary, districtLaunched: !!dists.get(inst.districtId)?.launched,
+        inst, typeKey: ty?.key ?? "", typePrimary: !!ty?.isPrimary, districtLaunched: !!(inst.districtId ? dists.get(inst.districtId)?.launched : false),
         signals: sigs.filter((x) => x.institutionId === inst.id), contacts: cons.filter((x) => x.institutionId === inst.id), engaged: engaged.has(inst.id),
       }, params, s);
       await db.update(t.institutions).set({ score: r.score, scoreBand: r.band, scoreBreakdown: r.lines, missingInfo: r.missing, opportunityCategory: r.category, scoredAt: new Date() })

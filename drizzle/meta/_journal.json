@@ -29,6 +29,20 @@
       "when": 1794222407366,
       "tag": "0003_overrated_millenium_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794389607534,
+      "tag": "0004_safe_mentallo",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794390153599,
+      "tag": "0005_noisy_cerebro",
+      "breakpoints": true
     }
   ]
 }

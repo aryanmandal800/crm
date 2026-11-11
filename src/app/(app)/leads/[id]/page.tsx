@@ -18,6 +18,8 @@ import {
   Layers,
   Sparkles,
   TrendingUp,
+  MessageSquare,
+  UserCheck,
 } from "lucide-react";
 import { db, t } from "@/db";
 import { requirePage } from "@/lib/auth";
@@ -40,7 +42,8 @@ const FIELD_KEYS = [
   "legalName", "regNumber", "regDate", "address", "taluka", "branchCount", "website",
   "landline", "mobile", "email", "totalMembers", "activeMembers", "totalDeposits",
   "loanBook", "totalAssets", "annualProfit", "netWorth", "employeeCount", "cbsVendor",
-  "cbsProduct", "hosting", "mobileApp", "ekyc", "upiIntegration", "centralisedCbs", "branchLocations"
+  "cbsProduct", "hosting", "mobileApp", "ekyc", "upiIntegration", "centralisedCbs", "branchLocations",
+  "authorizedPersonName", "authorizedPersonPhone", "authorizedPersonDesignation", "authorizedPersonEmail"
 ];
 
 function TriStateBadge({ value, name }: { value: string | null | undefined; name: string }) {
@@ -131,14 +134,16 @@ export default async function LeadProfile({ params }: { params: Promise<{ id: st
           <span className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-xs">{i.leadCode}</span>
             <BandBadge band={i.scoreBand} score={i.score} />
-            <Badge v={i.verification} />
+            <Badge v={i.verification ?? "UNVERIFIED"} />
             <span className="text-xs font-medium text-ink-600">
               {OPPORTUNITY_CATEGORIES[i.opportunityCategory] ?? i.opportunityCategory}
             </span>
-            <span className="text-xs text-ink-500">
-              · {i.type.name}
-              {i.type.isPrimary ? "" : " (expansion category)"}
-            </span>
+            {i.type && (
+              <span className="text-xs text-ink-500">
+                · {i.type.name}
+                {i.type.isPrimary ? "" : " (expansion category)"}
+              </span>
+            )}
             <span className="text-xs text-ink-500">· Owner: {i.owner?.name ?? "Unassigned"}</span>
             {i.tags.map((tg) => (
               <Badge key={tg} v="TAG">
@@ -506,6 +511,70 @@ export default async function LeadProfile({ params }: { params: Promise<{ id: st
                   <span>No website on file. Use “Generate AI insights” to search for the official website.</span>
                 </div>
               )}
+
+              {/* Authorized Discussion Person Card */}
+              {i.authorizedPersonName ? (
+                <div className="rounded-xl border border-amber-200 bg-linear-to-r from-amber-50/90 via-orange-50/50 to-amber-50/30 p-3.5 shadow-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-600 text-white font-bold text-sm shadow-xs">
+                        <UserCheck size={20} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
+                            Authorized Person (Discussion Ongoing)
+                          </span>
+                          <span className="rounded-full bg-amber-200/80 px-2 py-0.5 text-[10px] font-semibold text-amber-900">
+                            Key Contact
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-baseline gap-2 mt-0.5">
+                          <h4 className="font-bold text-ink-900 text-base">
+                            {i.authorizedPersonName}
+                          </h4>
+                          {i.authorizedPersonDesignation && (
+                            <span className="text-xs text-ink-600 font-medium">
+                              • {i.authorizedPersonDesignation}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {i.authorizedPersonPhone && (
+                        <>
+                          <a
+                            href={`tel:${i.authorizedPersonPhone}`}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100 transition shadow-2xs"
+                          >
+                            <Phone size={13} className="text-amber-700" />
+                            <span>{i.authorizedPersonPhone}</span>
+                          </a>
+                          <a
+                            href={`https://wa.me/${i.authorizedPersonPhone.replace(/\D/g, "")}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition shadow-2xs"
+                          >
+                            <MessageSquare size={13} className="text-emerald-600" />
+                            <span>WhatsApp</span>
+                          </a>
+                        </>
+                      )}
+                      {i.authorizedPersonEmail && (
+                        <a
+                          href={`mailto:${i.authorizedPersonEmail}`}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-ink-700 hover:bg-ink-50 transition shadow-2xs"
+                        >
+                          <Mail size={13} className="text-violet-600" />
+                          <span>{i.authorizedPersonEmail}</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               {/* Direct Contact Channels Grid */}
               <div className="grid gap-3 sm:grid-cols-3">

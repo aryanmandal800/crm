@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, t } from "@/db";
 import { api } from "@/lib/api";
 import { assertWritable, canAssignTo, getInstitutionOr404 } from "@/lib/access";
@@ -25,6 +25,31 @@ export const PATCH = api<{ id: string }>(["lead.edit", "lead.assign"], async (ct
   }
   if (patch.legalName) patch.dedupeKey = dedupeKey(patch.legalName);
   const [after] = await db.update(t.institutions).set(patch).where(eq(t.institutions.id, id)).returning();
+  if (patch.authorizedPersonName) {
+    const existing = before.authorizedPersonName
+      ? await db.select().from(t.contacts).where(and(eq(t.contacts.institutionId, id), eq(t.contacts.name, before.authorizedPersonName))).limit(1)
+      : [];
+    if (existing.length > 0) {
+      await db.update(t.contacts).set({
+        name: patch.authorizedPersonName,
+        designation: patch.authorizedPersonDesignation ?? existing[0].designation,
+        businessPhone: patch.authorizedPersonPhone ?? existing[0].businessPhone,
+        businessEmail: patch.authorizedPersonEmail ?? existing[0].businessEmail,
+      }).where(eq(t.contacts.id, existing[0].id));
+    } else {
+      await db.insert(t.contacts).values({
+        institutionId: id,
+        name: patch.authorizedPersonName,
+        designation: patch.authorizedPersonDesignation ?? "Authorized Person",
+        role: "OTHER",
+        businessPhone: patch.authorizedPersonPhone ?? null,
+        businessEmail: patch.authorizedPersonEmail ?? null,
+        isDecisionMaker: true,
+        verification: "UNVERIFIED",
+        notes: "Authorized discussion person updated.",
+      });
+    }
+  }
   await rescore([id]);
   const changed = Object.fromEntries(Object.keys(patch).map((k) => [k, { from: (before as any)[k], to: (after as any)[k] }]));
   await audit(ctx, "update", "institution", id, null, changed);

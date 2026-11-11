@@ -25,7 +25,7 @@ export default async function Competitor({ params }: { params: Promise<{ id: str
         <Card title="Evidence">{c.sources.map((s) => <div key={s.id} className="mb-2 text-sm"><b>{s.name}</b> <Badge v={s.classification} />{s.url && <a className="link block break-all text-xs" href={s.url} target="_blank" rel="noreferrer">{s.url}</a>}<div className="text-xs text-ink-500">{dt(s.accessedAt)}{s.evidence ? ` — ${s.evidence}` : ""}</div></div>)}
           {edit && <Disclosure label="Add source"><JsonForm action={`/api/competitors/${id}/sources`} cols={1} fields={[{ name: "name", label: "Source", required: true }, { name: "url", label: "URL" }, { name: "accessedAt", label: "Accessed", type: "date" },
             { name: "classification", label: "Classification", type: "select", options: ["VERIFIED_FACT", "PUBLICLY_REPORTED", "ESTIMATE"].map((v) => ({ value: v, label: v })) }, { name: "evidence", label: "What it shows", type: "textarea" }]} initial={{ classification: "PUBLICLY_REPORTED" }} /></Disclosure>}</Card>
-        <Card title={`Incumbent at (${insts.length})`}>{insts.map((i) => <Link key={i.id} href={`/leads/${i.id}`} className="block text-sm hover:text-brand-600">{i.name} <span className="text-xs text-ink-500">{i.vc.replace(/_/g, " ").toLowerCase()}</span></Link>)}</Card>
+        <Card title={`Incumbent at (${insts.length})`}>{insts.map((i) => <Link key={i.id} href={`/leads/${i.id}`} className="block text-sm hover:text-brand-600">{i.name} <span className="text-xs text-ink-500">{i.vc ? i.vc.replace(/_/g, " ").toLowerCase() : "unknown"}</span></Link>)}</Card>
       </div>
     </div>
   </>);

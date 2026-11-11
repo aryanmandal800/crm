@@ -47,12 +47,17 @@ export default async function Leads({ searchParams }: { searchParams: Promise<Re
     type: t.institutionTypes.name, taluka: t.talukas.name, owner: t.users.name, score: t.institutions.score, band: t.institutions.scoreBand,
     members: t.institutions.totalMembers, branches: t.institutions.branchCount, verification: t.institutions.verification,
     category: t.institutions.opportunityCategory, vendor: t.institutions.cbsVendor, createdAt: t.institutions.createdAt,
-  }).from(t.institutions).innerJoin(t.institutionTypes, eq(t.institutionTypes.id, t.institutions.typeId))
+  }).from(t.institutions).leftJoin(t.institutionTypes, eq(t.institutionTypes.id, t.institutions.typeId))
     .leftJoin(t.talukas, eq(t.talukas.id, t.institutions.talukaId)).leftJoin(t.users, eq(t.users.id, t.institutions.ownerId));
-  const [rows, [{ n }]] = await Promise.all([
+  const [dbRows, [{ n }]] = await Promise.all([
     base.where(where).orderBy(sort, desc(t.institutions.createdAt)).limit(PAGE).offset((page - 1) * PAGE),
-    db.select({ n: sql<number>`count(*)::int` }).from(t.institutions).innerJoin(t.institutionTypes, eq(t.institutionTypes.id, t.institutions.typeId)).where(where),
+    db.select({ n: sql<number>`count(*)::int` }).from(t.institutions).leftJoin(t.institutionTypes, eq(t.institutionTypes.id, t.institutions.typeId)).where(where),
   ]);
+  const rows = dbRows.map((r) => ({
+    ...r,
+    type: r.type ?? "—",
+    verification: (r.verification ?? "UNVERIFIED") as "UNVERIFIED" | "PARTIAL" | "VERIFIED" | "DISPUTED",
+  }));
   const qs = (patch: Record<string, string | undefined>) => "?" + new URLSearchParams(Object.entries({ ...sp, ...patch }).filter(([, v]) => v) as [string, string][]).toString();
   const sel = (name: string, label: string, opts: { value: string; label: string }[]) => (
     <select name={name} defaultValue={sp[name] ?? ""} className="input"><option value="">{label}</option>{opts.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}</select>

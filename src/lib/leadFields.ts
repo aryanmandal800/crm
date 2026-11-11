@@ -9,12 +9,12 @@ export function leadSections(o: { types: O; districts: O; talukas: O; owners?: O
     { key: "identity", title: "Identity & registration", fields: [
       { name: "legalName", label: "Registered legal name", required: true, wide: true },
       { name: "shortName", label: "Popular / short name" },
-      { name: "typeId", label: "Institution type", type: "select", options: o.types, required: true },
+      { name: "typeId", label: "Institution type", type: "select", options: o.types },
       { name: "regNumber", label: "Registration number" }, { name: "regDate", label: "Registration date", type: "date" },
       { name: "regAuthority", label: "Registration authority", placeholder: "e.g. Dy. Registrar, Pune City" },
       { name: "multiState", label: "Multi-state society", type: "checkbox" },
       { name: "status", label: "Status", type: "select", options: enumOpt(["UNKNOWN", "ACTIVE", "INACTIVE", "UNDER_LIQUIDATION"]) },
-      { name: "districtId", label: "District", type: "select", options: o.districts, required: true },
+      { name: "districtId", label: "District", type: "select", options: o.districts },
       { name: "talukaId", label: "Taluka", type: "select", options: o.talukas },
       { name: "city", label: "City / town / village" }, { name: "pinCode", label: "PIN code" },
       { name: "address", label: "Head office address", type: "textarea" },
@@ -22,6 +22,12 @@ export function leadSections(o: { types: O; districts: O; talukas: O; owners?: O
       { name: "website", label: "Official website" }, { name: "mapsUrl", label: "Google Maps / listing URL" },
       { name: "socialProfiles", label: "Official social profiles", type: "textarea" },
       ...(o.owners ? [{ name: "ownerId", label: "Owner (salesperson)", type: "select" as const, options: o.owners }] : []),
+    ] },
+    { key: "authorizedPerson", title: "Authorized discussion person (In discussion)", fields: [
+      { name: "authorizedPersonName", label: "Authorized person name", placeholder: "e.g. Ramesh Patil (person you are talking with)", wide: true },
+      { name: "authorizedPersonDesignation", label: "Designation / Role", placeholder: "e.g. Secretary / Chairman / CEO / Manager" },
+      { name: "authorizedPersonPhone", label: "Direct mobile / phone", placeholder: "Direct contact / WhatsApp" },
+      { name: "authorizedPersonEmail", label: "Direct email", type: "email", placeholder: "Direct email address" },
     ] },
     { key: "contact", title: "Official contact points", fields: [
       { name: "landline", label: "Official landline" }, { name: "mobile", label: "Official mobile" }, { name: "email", label: "General email", type: "email" },

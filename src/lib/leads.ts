@@ -8,10 +8,10 @@ export function dedupeKey(name: string) {
     .split(/\s+/).filter((w) => w && !STOP.has(w)).join(" ").trim() || name.toLowerCase().trim();
 }
 
-export async function nextLeadCode(districtId: string) {
-  const [d] = await db.select({ code: t.districts.code }).from(t.districts).where(eq(t.districts.id, districtId));
+export async function nextLeadCode(districtId?: string | null) {
+  const [d] = districtId ? await db.select({ code: t.districts.code }).from(t.districts).where(eq(t.districts.id, districtId)) : [undefined];
   const { rows } = await db.execute<{ n: string }>(sql`select nextval('lead_code_seq') as n`);
-  return `FP-${d?.code ?? "XXX"}-${String(rows[0].n).padStart(5, "0")}`;
+  return `FP-${d?.code ?? "GEN"}-${String(rows[0].n).padStart(5, "0")}`;
 }
 
 /** Exact duplicates (same registration number, or same normalised name in the same taluka) and fuzzy name matches. */
@@ -39,19 +39,22 @@ const str = z.preprocess((v) => (typeof v === "string" ? (v.trim() === "" ? null
 
 /** Fields a user may set on an institution. Score/insight columns are computed only. */
 export const institutionInput = z.object({
-  legalName: z.string().trim().min(3).max(300),
-  shortName: str, typeId: z.string().uuid(), regNumber: str, regDate: date, regAuthority: str,
-  multiState: z.boolean().nullable().optional(), status: z.enum(["ACTIVE", "INACTIVE", "UNDER_LIQUIDATION", "UNKNOWN"]).optional(),
-  address: str, districtId: z.string().uuid(), talukaId: opt(z.string().uuid()), city: str, pinCode: opt(z.string().regex(/^\d{6}$/, "PIN must be 6 digits")),
+  legalName: z.string().trim().min(2, "Name must be at least 2 characters").max(300),
+  shortName: str, typeId: opt(z.string().uuid()), regNumber: str, regDate: date, regAuthority: str,
+  multiState: z.boolean().nullable().optional(), status: z.enum(["ACTIVE", "INACTIVE", "UNDER_LIQUIDATION", "UNKNOWN"]).optional().nullable(),
+  address: str, districtId: opt(z.string().uuid()), talukaId: opt(z.string().uuid()), city: str, pinCode: str,
   branchCount: int, branchLocations: str, website: str, mapsUrl: str, socialProfiles: str,
-  landline: str, mobile: str, email: opt(z.string().email()), contactPageUrl: str, contactVerification: ver.optional(),
+  // Authorized discussion person (the person we are in active talks with)
+  authorizedPersonName: str, authorizedPersonDesignation: str, authorizedPersonPhone: str, authorizedPersonEmail: str,
+  // Official institutional contact points
+  landline: str, mobile: str, email: str, contactPageUrl: str, contactVerification: ver.optional().nullable(),
   totalMembers: int, activeMembers: int, totalDeposits: amt, loanBook: amt, totalAssets: amt, annualIncome: amt, annualProfit: amt, netWorth: amt,
   employeeCount: int, txnVolume: str, financialYear: str, financialSource: str, financialConfidence: conf.nullable().optional(),
-  cbsVendor: str, cbsProduct: str, vendorWebsite: str, hosting: z.enum(["CLOUD", "ON_PREMISE", "HYBRID", "UNKNOWN"]).optional(),
-  vendorClass: z.enum(["CONFIRMED_INCUMBENT", "PROBABLE_INCUMBENT", "UNKNOWN", "NONE_IDENTIFIED"]).optional(),
-  mobileApp: tri.optional(), internetBanking: tri.optional(), upiIntegration: tri.optional(), digitalLoans: tri.optional(), ekyc: tri.optional(), centralisedCbs: tri.optional(),
+  cbsVendor: str, cbsProduct: str, vendorWebsite: str, hosting: z.enum(["CLOUD", "ON_PREMISE", "HYBRID", "UNKNOWN"]).optional().nullable(),
+  vendorClass: z.enum(["CONFIRMED_INCUMBENT", "PROBABLE_INCUMBENT", "UNKNOWN", "NONE_IDENTIFIED"]).optional().nullable(),
+  mobileApp: tri.optional().nullable(), internetBanking: tri.optional().nullable(), upiIntegration: tri.optional().nullable(), digitalLoans: tri.optional().nullable(), ekyc: tri.optional().nullable(), centralisedCbs: tri.optional().nullable(),
   memberDigitalServices: str, recentTechProcurement: str, contractRenewal: str, legacyEvidence: str, techComplaints: str,
-  verification: ver.optional(), dataConfidence: conf.optional(), factStatus: z.record(z.string(), z.enum(["VERIFIED_FACT", "PUBLICLY_REPORTED", "ESTIMATE"])).optional(),
+  verification: ver.optional().nullable(), dataConfidence: conf.optional().nullable(), factStatus: z.record(z.string(), z.enum(["VERIFIED_FACT", "PUBLICLY_REPORTED", "ESTIMATE"])).optional(),
   qualification: z.record(z.string(), z.string()).optional(), manualScores: z.record(z.string(), z.number()).optional(),
   lastVerifiedAt: date, nextVerificationAt: date, shariahInterest: z.boolean().optional(), tags: z.array(z.string().max(40)).max(20).optional(), notes: str,
   ownerId: opt(z.string().uuid()),
@@ -59,4 +62,7 @@ export const institutionInput = z.object({
 export type InstitutionInput = z.infer<typeof institutionInput>;
 
 /** Fields a Sales Executive may change (contact details, notes) — everything else needs lead.edit + research rights. */
-export const EXEC_EDITABLE = ["landline", "mobile", "email", "contactPageUrl", "website", "address", "notes", "qualification", "branchLocations"];
+export const EXEC_EDITABLE = [
+  "landline", "mobile", "email", "contactPageUrl", "website", "address", "notes", "qualification", "branchLocations",
+  "authorizedPersonName", "authorizedPersonDesignation", "authorizedPersonPhone", "authorizedPersonEmail"
+];
