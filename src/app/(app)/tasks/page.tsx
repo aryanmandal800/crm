@@ -14,7 +14,22 @@ export default async function Tasks({ searchParams }: { searchParams: Promise<{ 
   const rows = await db.query.tasks.findMany({ where: and(eq(t.tasks.status, "OPEN"), showAll ? undefined : or(eq(t.tasks.assigneeId, ctx.user.id), eq(t.tasks.createdById, ctx.user.id))), with: { assignee: true, institution: true }, orderBy: asc(t.tasks.dueAt) });
   const users = ctx.can("tasks.manage") ? o.users.filter((u) => ctx.scope === "ALL" || ctx.teamUserIds.includes(u.id)) : o.users.filter((u) => u.id === ctx.user.id);
   return (<>
-    <PageHeader title="Tasks" sub="Internal to-dos. Deal follow-ups live on the deal itself." actions={ctx.can("dashboard.founder") ? <Link className="btn-ghost" href={showAll ? "/tasks" : "/tasks?all=1"}>{showAll ? "My tasks" : "Everyone's tasks"}</Link> : null} />
+    <PageHeader
+      title="Tasks"
+      sub="Internal to-dos. Deal follow-ups live on the deal itself."
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Link className="btn-primary text-xs" href="/work-tracker">
+            Open Daily Tracker & EOD
+          </Link>
+          {ctx.can("dashboard.founder") ? (
+            <Link className="btn-ghost text-xs" href={showAll ? "/tasks" : "/tasks?all=1"}>
+              {showAll ? "My tasks" : "Everyone's tasks"}
+            </Link>
+          ) : null}
+        </div>
+      }
+    />
     <div className="grid gap-4 lg:grid-cols-3">
       <div className="card lg:col-span-2"><Table head={["Task", "Assignee", "Due", "Priority", ""]} empty={!rows.length}>
         {rows.map((x) => <tr key={x.id}><td className="td"><b>{x.title}</b>{x.institution && <div><Link className="link text-xs" href={`/leads/${x.institutionId}`}>{x.institution.legalName}</Link></div>}{x.description && <div className="text-xs text-ink-500">{x.description}</div>}</td>

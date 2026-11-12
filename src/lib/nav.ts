@@ -6,6 +6,7 @@ const ITEMS: (NavItem & { any: Permission[] | "*" })[] = [
   { href: "/command-centre", label: "Founder's Command Centre", group: "Overview", any: ["dashboard.founder"] },
   { href: "/dashboard", label: "Analytics dashboard", group: "Overview", any: ["reports.view.all", "reports.view.team"] },
   { href: "/my-day", label: "My day", group: "Overview", any: ["activity.create"] },
+  { href: "/work-tracker", label: "Work Tracker & EOD", group: "Overview", any: "*" },
   { href: "/leads", label: "Lead database", group: "Sales", any: ["lead.view.all", "lead.view.team", "lead.view.own"] },
   { href: "/pipeline", label: "Deal pipeline", group: "Sales", any: ["deal.view"] },
   { href: "/activities", label: "Activities", group: "Sales", any: ["activity.create", "reports.view.all", "reports.view.team"] },

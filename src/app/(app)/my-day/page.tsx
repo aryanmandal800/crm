@@ -23,7 +23,15 @@ export default async function MyDay() {
     db.select().from(t.tasks).where(and(eq(t.tasks.assigneeId, me), eq(t.tasks.status, "OPEN"))).orderBy(asc(t.tasks.dueAt)).limit(10),
   ]);
   return (<>
-    <PageHeader title={`Good day, ${ctx.user.name.split(" ")[0]}`} sub={today.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })} />
+    <PageHeader
+      title={`Good day, ${ctx.user.name.split(" ")[0]}`}
+      sub={today.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
+      actions={
+        <Link href="/work-tracker" className="btn-primary text-xs">
+          Open Work Tracker & EOD
+        </Link>
+      }
+    />
     <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
       <Stat label="Follow-ups due / overdue" value={due.length} tone={due.length ? "warm" : undefined} href="/pipeline?view=table" />
       <Stat label="Activities today" value={todayActs[0].n} href="/activities?range=today" /><Stat label="Calls today" value={todayActs[0].calls} />
@@ -40,7 +48,7 @@ export default async function MyDay() {
       <Card title="Hot / warm leads with no touch in 14 days">{hot.map((h) => (
         <Link key={h.id} href={`/leads/${h.id}`} className="mb-1 flex items-center justify-between text-sm hover:text-brand-600"><span>{h.name}</span><BandBadge band={h.band} score={h.score} /></Link>))}
         {!hot.length && <p className="muted">All hot leads are being worked.</p>}</Card>
-      <Card title="My tasks" actions={<Link href="/tasks" className="link text-xs">All tasks</Link>}>{tasks.map((x) => <div key={x.id} className="mb-1 flex justify-between text-sm"><span>{x.title}</span><span className="text-xs text-ink-500">{dt(x.dueAt)}</span></div>)}{!tasks.length && <p className="muted">No open tasks.</p>}</Card>
+      <Card title="My tasks" actions={<div className="flex gap-2.5 items-center"><Link href="/work-tracker" className="link text-xs font-semibold text-brand-600">Daily Tracker & EOD</Link><Link href="/tasks" className="link text-xs">All tasks</Link></div>}>{tasks.map((x) => <div key={x.id} className="mb-1 flex justify-between text-sm"><span>{x.title}</span><span className="text-xs text-ink-500">{dt(x.dueAt)}</span></div>)}{!tasks.length && <p className="muted">No open tasks.</p>}</Card>
     </div>
   </>);
 }

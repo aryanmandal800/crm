@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { statfs } from "fs/promises";
 import path from "path";
 import { desc, eq, gte, sql } from "drizzle-orm";
@@ -35,6 +36,7 @@ export default async function Tech() {
   const diskFree = disk ? disk.bavail * disk.bsize : 0, diskTotal = disk ? disk.blocks * disk.bsize : 0;
   return (<>
     <PageHeader title="Technical administration" sub={`v${pkg.version} · Node ${process.version} · ${process.env.NODE_ENV}`} actions={<>
+      <Link href="/work-tracker" className="btn-ghost text-xs font-semibold text-brand-600">Daily Work Tracker & EOD</Link>
       <ActionButton url="/api/jobs" body={{ type: "BACKUP" }} label="Run backup now" className="btn-primary" />
       <ActionButton url="/api/jobs" body={{ type: "RESCORE" }} label="Re-score all leads" />
     </>} />

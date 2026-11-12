@@ -411,14 +411,54 @@ export const tasks = pgTable("tasks", {
   description: text("description"),
   assigneeId: uuid("assignee_id").notNull().references(() => users.id),
   createdById: uuid("created_by_id").notNull().references(() => users.id),
+  department: text("department").notNull().default("GENERAL"), // BDM | TECH | GENERAL
+  category: text("category"),
+  scheduledDate: text("scheduled_date"), // YYYY-MM-DD
   institutionId: uuid("institution_id").references(() => institutions.id),
   dealId: uuid("deal_id").references(() => deals.id),
   dueAt: ts("due_at"),
+  estimatedMinutes: integer("estimated_minutes"),
+  timeSpentMinutes: integer("time_spent_minutes"),
   priority: text("priority").notNull().default("MEDIUM"),
-  status: text("status").notNull().default("OPEN"),
+  status: text("status").notNull().default("OPEN"), // OPEN | IN_PROGRESS | DONE | BLOCKED | CANCELLED
+  startedAt: ts("started_at"),
   completedAt: ts("completed_at"),
   createdAt: created(),
 });
+
+export const taskActivityLogs = pgTable("task_activity_logs", {
+  id: id(),
+  taskId: uuid("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id),
+  action: text("action").notNull(), // CREATED | STATUS_CHANGE | UPDATED | CHECKED | UNCHECKED | NOTE_ADDED
+  fromStatus: text("from_status"),
+  toStatus: text("to_status"),
+  note: text("note"),
+  createdAt: created(),
+}, (t) => [index("idx_task_activity_task").on(t.taskId), index("idx_task_activity_user_time").on(t.userId, t.createdAt)]);
+
+export const dailyEodReports = pgTable("daily_eod_reports", {
+  id: id(),
+  userId: uuid("user_id").notNull().references(() => users.id),
+  reportDate: text("report_date").notNull(), // YYYY-MM-DD
+  department: text("department").notNull().default("GENERAL"), // BDM | TECH | GENERAL
+  summary: text("summary"),
+  keyWins: text("key_wins"),
+  blockers: text("blockers"),
+  planForTomorrow: text("plan_for_tomorrow"),
+  hoursSpent: numeric("hours_spent", { precision: 4, scale: 2, mode: "number" }).default(0),
+  tasksCompletedCount: integer("tasks_completed_count").default(0),
+  tasksPendingCount: integer("tasks_pending_count").default(0),
+  completionRate: integer("completion_rate").default(0),
+  status: text("status").notNull().default("SUBMITTED"), // DRAFT | SUBMITTED
+  submittedAt: ts("submitted_at").defaultNow(),
+  createdAt: created(),
+  updatedAt: updated(),
+}, (t) => [
+  uniqueIndex("uq_user_eod_date").on(t.userId, t.reportDate),
+  index("idx_eod_date").on(t.reportDate),
+  index("idx_eod_user").on(t.userId),
+]);
 
 // ───────────── Catalogue, pricing, quotes, approvals ─────────────
 
@@ -706,7 +746,19 @@ export const changeRequestsRelations = relations(changeRequests, ({ one }) => ({
 export const approvalRequestsRelations = relations(approvalRequests, ({ one }) => ({
   requestedBy: one(users, { fields: [approvalRequests.requestedById], references: [users.id] }),
 }));
-export const tasksRelations = relations(tasks, ({ one }) => ({
+export const tasksRelations = relations(tasks, ({ one, many }) => ({
   assignee: one(users, { fields: [tasks.assigneeId], references: [users.id] }),
+  creator: one(users, { fields: [tasks.createdById], references: [users.id] }),
   institution: one(institutions, { fields: [tasks.institutionId], references: [institutions.id] }),
+  deal: one(deals, { fields: [tasks.dealId], references: [deals.id] }),
+  activityLogs: many(taskActivityLogs),
+}));
+
+export const taskActivityLogsRelations = relations(taskActivityLogs, ({ one }) => ({
+  task: one(tasks, { fields: [taskActivityLogs.taskId], references: [tasks.id] }),
+  user: one(users, { fields: [taskActivityLogs.userId], references: [users.id] }),
+}));
+
+export const dailyEodReportsRelations = relations(dailyEodReports, ({ one }) => ({
+  user: one(users, { fields: [dailyEodReports.userId], references: [users.id] }),
 }));
