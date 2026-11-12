@@ -7,10 +7,26 @@ import { forbidden, notFound } from "@/lib/errors";
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
+function getDepartmentScope(ctx: any): { isCeo: boolean; enforcedDept: "BDM" | "TECH" | null } {
+  const isCeo = Boolean(ctx.user?.isFounder || ctx.role?.key === "SUPER_ADMIN" || ctx.can?.("dashboard.founder"));
+  if (isCeo) return { isCeo: true, enforcedDept: null };
+  if (ctx.role?.key === "TECH_ADMIN" || String(ctx.role?.key).includes("TECH")) {
+    return { isCeo: false, enforcedDept: "TECH" };
+  }
+  return { isCeo: false, enforcedDept: "BDM" };
+}
+
 export const PATCH = api<{ id: string }>(null, async (ctx, _req, { id }) => {
   assertWritable(ctx);
+  const { isCeo, enforcedDept } = getDepartmentScope(ctx);
+
   const [existing] = await db.select().from(t.tasks).where(eq(t.tasks.id, id));
   if (!existing) throw notFound("Task not found");
+
+  // Strictly prevent BDM from editing Tech and Tech from editing BDM
+  if (enforcedDept && existing.department !== enforcedDept) {
+    throw forbidden("You cannot modify another department's work item");
+  }
 
   const body = await ctx.json(
     z.object({
@@ -62,7 +78,9 @@ export const PATCH = api<{ id: string }>(null, async (ctx, _req, { id }) => {
   if (startedAt !== undefined) updates.startedAt = startedAt;
   if (body.title !== undefined) updates.title = body.title;
   if (body.description !== undefined) updates.description = body.description;
-  if (body.department !== undefined) updates.department = body.department;
+  if (body.department !== undefined && (isCeo || body.department === enforcedDept)) {
+    updates.department = body.department;
+  }
   if (body.category !== undefined) updates.category = body.category;
   if (body.scheduledDate !== undefined) updates.scheduledDate = body.scheduledDate;
   if (body.priority !== undefined) updates.priority = body.priority;
@@ -111,8 +129,14 @@ export const PATCH = api<{ id: string }>(null, async (ctx, _req, { id }) => {
 
 export const DELETE = api<{ id: string }>(null, async (ctx, _req, { id }) => {
   assertWritable(ctx);
+  const { enforcedDept } = getDepartmentScope(ctx);
+
   const [existing] = await db.select().from(t.tasks).where(eq(t.tasks.id, id));
   if (!existing) throw notFound("Task not found");
+
+  if (enforcedDept && existing.department !== enforcedDept) {
+    throw forbidden("You cannot delete another department's work item");
+  }
 
   if (
     existing.createdById !== ctx.user.id &&
@@ -126,4 +150,3 @@ export const DELETE = api<{ id: string }>(null, async (ctx, _req, { id }) => {
   await db.delete(t.tasks).where(eq(t.tasks.id, id));
   return { ok: true, id };
 });
-

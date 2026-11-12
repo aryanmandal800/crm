@@ -6,15 +6,32 @@ import { assertWritable } from "@/lib/access";
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
+// Helper to determine department access
+function getDepartmentScope(ctx: any): { isCeo: boolean; enforcedDept: "BDM" | "TECH" | null } {
+  const isCeo = Boolean(ctx.user?.isFounder || ctx.role?.key === "SUPER_ADMIN" || ctx.can?.("dashboard.founder"));
+  if (isCeo) return { isCeo: true, enforcedDept: null };
+  if (ctx.role?.key === "TECH_ADMIN" || String(ctx.role?.key).includes("TECH")) {
+    return { isCeo: false, enforcedDept: "TECH" };
+  }
+  return { isCeo: false, enforcedDept: "BDM" };
+}
+
 export const GET = api(null, async (ctx, req) => {
   const url = req.nextUrl;
   const todayStr = new Date().toISOString().slice(0, 10);
   const targetDate = url.searchParams.get("date") || todayStr;
   const startDate = url.searchParams.get("startDate");
   const endDate = url.searchParams.get("endDate");
-  const department = url.searchParams.get("department") || "ALL"; // ALL | BDM | TECH | GENERAL
+  const reqDept = url.searchParams.get("department") || "ALL"; // ALL | BDM | TECH
   const userId = url.searchParams.get("userId"); // specific user or 'all' or empty
   const view = url.searchParams.get("view") || "day";
+
+  // Enforce role-based department isolation:
+  // - Tech users can ONLY see TECH
+  // - BDM users can ONLY see BDM
+  // - CEO can see ALL, BDM, or TECH
+  const { isCeo, enforcedDept } = getDepartmentScope(ctx);
+  const department = enforcedDept ? enforcedDept : reqDept;
 
   // Build filters
   const conditions = [];
@@ -86,7 +103,7 @@ export const GET = api(null, async (ctx, req) => {
   const pending = rawTasks.filter((x) => x.status === "OPEN" || x.status === "TODO").length;
   const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-  // Breakdown by department
+  // Breakdown by department (only compute if CEO or specific department)
   const bdmTasks = rawTasks.filter((x) => x.department === "BDM");
   const techTasks = rawTasks.filter((x) => x.department === "TECH");
 
@@ -113,11 +130,21 @@ export const GET = api(null, async (ctx, req) => {
     dayStats[dayKey].percentage = Math.round((dayStats[dayKey].completed / dayStats[dayKey].total) * 100);
   }
 
-  // Fetch EOD reports for the target date or date range
+  // Fetch EOD reports with role department isolation
+  const eodConditions = [];
+  if (startDate && endDate) {
+    eodConditions.push(and(gte(t.dailyEodReports.reportDate, startDate), lte(t.dailyEodReports.reportDate, endDate)));
+  } else {
+    eodConditions.push(eq(t.dailyEodReports.reportDate, targetDate));
+  }
+  if (enforcedDept) {
+    eodConditions.push(eq(t.dailyEodReports.department, enforcedDept));
+  } else if (department && department !== "ALL") {
+    eodConditions.push(eq(t.dailyEodReports.department, department));
+  }
+
   const eodReports = await db.query.dailyEodReports.findMany({
-    where: startDate && endDate
-      ? and(gte(t.dailyEodReports.reportDate, startDate), lte(t.dailyEodReports.reportDate, endDate))
-      : eq(t.dailyEodReports.reportDate, targetDate),
+    where: and(...eodConditions),
     with: {
       user: { columns: { id: true, name: true, email: true } },
     },
@@ -132,6 +159,8 @@ export const GET = api(null, async (ctx, req) => {
 
   return {
     date: targetDate,
+    isCeo,
+    enforcedDept,
     stats: {
       total,
       completed,
@@ -139,8 +168,8 @@ export const GET = api(null, async (ctx, req) => {
       inProgress,
       blocked,
       percentage,
-      bdm: { total: bdmTotal, completed: bdmCompleted, percentage: bdmPercentage },
-      tech: { total: techTotal, completed: techCompleted, percentage: techPercentage },
+      bdm: isCeo || enforcedDept === "BDM" ? { total: bdmTotal, completed: bdmCompleted, percentage: bdmPercentage } : null,
+      tech: isCeo || enforcedDept === "TECH" ? { total: techTotal, completed: techCompleted, percentage: techPercentage } : null,
     },
     dayStats,
     tasks: rawTasks,
@@ -151,6 +180,8 @@ export const GET = api(null, async (ctx, req) => {
 
 export const POST = api(null, async (ctx) => {
   assertWritable(ctx);
+  const { isCeo, enforcedDept } = getDepartmentScope(ctx);
+
   const body = await ctx.json(
     z.object({
       title: z.string().trim().min(2).max(300),
@@ -168,6 +199,8 @@ export const POST = api(null, async (ctx) => {
     })
   );
 
+  // If not CEO, department is strictly enforced to user's department
+  const taskDept = enforcedDept ? enforcedDept : body.department;
   const assigneeId = body.assigneeId || ctx.user.id;
   const now = new Date();
   const completedAt = body.status === "DONE" ? now : null;
@@ -178,7 +211,7 @@ export const POST = api(null, async (ctx) => {
     .values({
       title: body.title,
       description: body.description ?? null,
-      department: body.department,
+      department: taskDept,
       category: body.category ?? null,
       scheduledDate: body.scheduledDate,
       priority: body.priority,
@@ -201,9 +234,8 @@ export const POST = api(null, async (ctx) => {
     action: "CREATED",
     fromStatus: null,
     toStatus: body.status,
-    note: `Task created for ${body.scheduledDate} (${body.department})`,
+    note: `Task created for ${body.scheduledDate} (${taskDept})`,
   });
 
   return { id: createdTask.id, task: createdTask };
 });
-

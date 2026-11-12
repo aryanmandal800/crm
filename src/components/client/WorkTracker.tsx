@@ -108,6 +108,8 @@ interface WorkTrackerProps {
     email: string;
     role: string;
     isFounder: boolean;
+    isCeo: boolean;
+    userDepartment: "BDM" | "TECH" | "ALL";
   };
   users: UserOption[];
   institutions: InstitutionOption[];
@@ -183,7 +185,8 @@ function getWeekDays(dateStr: string): string[] {
 export function WorkTracker({ currentUser, users, institutions }: WorkTrackerProps) {
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
-  const [department, setDepartment] = useState<"ALL" | "BDM" | "TECH">("ALL");
+  const initialDept: "ALL" | "BDM" | "TECH" = currentUser.isCeo ? "ALL" : (currentUser.userDepartment as "BDM" | "TECH");
+  const [department, setDepartment] = useState<"ALL" | "BDM" | "TECH">(initialDept);
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
   const [view, setView] = useState<"day" | "week" | "month" | "board" | "eod">("day");
 
@@ -199,14 +202,16 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEodModalOpen, setIsEodModalOpen] = useState(false);
   const [quickTaskTitle, setQuickTaskTitle] = useState("");
-  const [quickTaskDept, setQuickTaskDept] = useState<"BDM" | "TECH">("BDM");
+  const [quickTaskDept, setQuickTaskDept] = useState<"BDM" | "TECH">(
+    currentUser.userDepartment === "TECH" ? "TECH" : "BDM"
+  );
 
   // Detailed Add Task Form
   const [taskForm, setTaskForm] = useState({
     title: "",
     description: "",
-    department: (currentUser.role === "TECH_ADMIN" ? "TECH" : "BDM") as "BDM" | "TECH" | "GENERAL",
-    category: currentUser.role === "TECH_ADMIN" ? "Bug Fix" : "Field Visit",
+    department: (currentUser.userDepartment === "TECH" ? "TECH" : "BDM") as "BDM" | "TECH" | "GENERAL",
+    category: currentUser.userDepartment === "TECH" ? "Bug Fix" : "Field Visit",
     scheduledDate: todayStr,
     priority: "MEDIUM" as "LOW" | "MEDIUM" | "HIGH" | "URGENT",
     status: "OPEN" as "OPEN" | "IN_PROGRESS" | "DONE" | "BLOCKED",
@@ -222,7 +227,7 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
     blockers: "",
     planForTomorrow: "",
     hoursSpent: 8,
-    department: (currentUser.role === "TECH_ADMIN" ? "TECH" : "BDM") as "BDM" | "TECH" | "GENERAL",
+    department: (currentUser.userDepartment === "TECH" ? "TECH" : "BDM") as "BDM" | "TECH" | "GENERAL",
   });
 
   // Calculate range based on view
@@ -389,7 +394,7 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: quickTaskTitle.trim(),
-          department: quickTaskDept,
+          department: currentUser.isCeo ? quickTaskDept : (currentUser.userDepartment as "BDM" | "TECH"),
           scheduledDate: selectedDate,
           priority: "MEDIUM",
           status: "OPEN",
@@ -415,6 +420,7 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...taskForm,
+          department: currentUser.isCeo ? taskForm.department : (currentUser.userDepartment as "BDM" | "TECH"),
           institutionId: taskForm.institutionId || undefined,
         }),
       });
@@ -423,8 +429,8 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
       setTaskForm({
         title: "",
         description: "",
-        department: currentUser.role === "TECH_ADMIN" ? "TECH" : "BDM",
-        category: currentUser.role === "TECH_ADMIN" ? "Bug Fix" : "Field Visit",
+        department: (currentUser.userDepartment === "TECH" ? "TECH" : "BDM") as "BDM" | "TECH" | "GENERAL",
+        category: currentUser.userDepartment === "TECH" ? "Bug Fix" : "Field Visit",
         scheduledDate: selectedDate,
         priority: "MEDIUM",
         status: "OPEN",
@@ -452,7 +458,7 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           reportDate: selectedDate,
-          department: eodForm.department,
+          department: currentUser.isCeo ? eodForm.department : (currentUser.userDepartment as "BDM" | "TECH"),
           summary: eodForm.summary,
           keyWins: eodForm.keyWins || null,
           blockers: eodForm.blockers || null,
@@ -507,7 +513,7 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
         blockers: "",
         planForTomorrow: pendingTitles ? `Follow-up on pending items:\n${pendingTitles}` : "",
         hoursSpent: 8,
-        department: currentUser.role === "TECH_ADMIN" ? "TECH" : "BDM",
+        department: (currentUser.userDepartment === "TECH" ? "TECH" : "BDM") as "BDM" | "TECH" | "GENERAL",
       });
     }
     setIsEodModalOpen(true);
@@ -547,12 +553,29 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
         <div>
           <div className="flex items-center gap-2">
             <h1 className="h1 text-ink-900">Work Tracker & EOD</h1>
-            <span className="rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-semibold text-brand-700">
-              BDM & Tech
+            <span
+              className={clsx(
+                "rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                currentUser.isCeo
+                  ? "bg-violet-100 text-violet-800"
+                  : currentUser.userDepartment === "TECH"
+                  ? "bg-sky-100 text-sky-800"
+                  : "bg-brand-100 text-brand-800"
+              )}
+            >
+              {currentUser.isCeo
+                ? "👑 CEO Oversight"
+                : currentUser.userDepartment === "TECH"
+                ? "💻 Tech Department"
+                : "💼 BDM Department"}
             </span>
           </div>
           <p className="muted mt-1">
-            Track daily to-dos, completion %, calendar schedule, Trello board, and End-of-Day reports with timestamps.
+            {currentUser.isCeo
+              ? "Full executive oversight: Monitor daily to-dos, progress %, activity logs, and EOD reports for both BDM and Tech teams."
+              : currentUser.userDepartment === "TECH"
+              ? "Engineering & DevOps daily work tracker, bug fixes, progress %, and EOD reports. (BDM work is isolated)."
+              : "Business development daily work tracker, client demos, progress %, and EOD reports. (Tech work is isolated)."}
           </p>
         </div>
 
@@ -585,44 +608,72 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
 
       {/* Top Filter and View Switcher Card */}
       <div className="card p-3 space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-4">
-        {/* Department Filters */}
+        {/* Department Filters - CEO sees all tabs, BDM/Tech only see their locked workspace */}
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs font-medium text-ink-500 mr-1 flex items-center gap-1">
-            <Filter size={13} /> Dept:
-          </span>
-          <button
-            onClick={() => setDepartment("ALL")}
-            className={clsx(
-              "rounded-lg px-3 py-1.5 text-xs font-medium transition",
-              department === "ALL" ? "bg-ink-900 text-white" : "bg-ink-100 text-ink-700 hover:bg-ink-200"
-            )}
-          >
-            All Work
-          </button>
-          <button
-            onClick={() => setDepartment("BDM")}
-            className={clsx(
-              "rounded-lg px-3 py-1.5 text-xs font-medium transition flex items-center gap-1.5",
-              department === "BDM"
-                ? "bg-violet-600 text-white shadow-sm"
-                : "bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200"
-            )}
-          >
-            <Briefcase size={13} />
-            <span>BDM (Sales)</span>
-          </button>
-          <button
-            onClick={() => setDepartment("TECH")}
-            className={clsx(
-              "rounded-lg px-3 py-1.5 text-xs font-medium transition flex items-center gap-1.5",
-              department === "TECH"
-                ? "bg-sky-600 text-white shadow-sm"
-                : "bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200"
-            )}
-          >
-            <Code2 size={13} />
-            <span>Tech & DevOps</span>
-          </button>
+          {currentUser.isCeo ? (
+            <>
+              <span className="text-xs font-medium text-ink-500 mr-1 flex items-center gap-1">
+                <Filter size={13} /> Dept:
+              </span>
+              <button
+                onClick={() => setDepartment("ALL")}
+                className={clsx(
+                  "rounded-lg px-3 py-1.5 text-xs font-medium transition",
+                  department === "ALL" ? "bg-ink-900 text-white" : "bg-ink-100 text-ink-700 hover:bg-ink-200"
+                )}
+              >
+                All Work
+              </button>
+              <button
+                onClick={() => setDepartment("BDM")}
+                className={clsx(
+                  "rounded-lg px-3 py-1.5 text-xs font-medium transition flex items-center gap-1.5",
+                  department === "BDM"
+                    ? "bg-violet-600 text-white shadow-sm"
+                    : "bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200"
+                )}
+              >
+                <Briefcase size={13} />
+                <span>BDM (Sales)</span>
+              </button>
+              <button
+                onClick={() => setDepartment("TECH")}
+                className={clsx(
+                  "rounded-lg px-3 py-1.5 text-xs font-medium transition flex items-center gap-1.5",
+                  department === "TECH"
+                    ? "bg-sky-600 text-white shadow-sm"
+                    : "bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200"
+                )}
+              >
+                <Code2 size={13} />
+                <span>Tech & DevOps</span>
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center gap-2">
+              {currentUser.userDepartment === "BDM" ? (
+                <div className="flex items-center gap-2">
+                  <span className="rounded-lg bg-violet-600 text-white px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 shadow-xs">
+                    <Briefcase size={13} />
+                    <span>BDM Workspace (Sales)</span>
+                  </span>
+                  <span className="text-[11px] text-ink-400 font-medium hidden sm:inline">
+                    🔒 Tech work is hidden · Confidential to BDM team & CEO
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="rounded-lg bg-sky-600 text-white px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 shadow-xs">
+                    <Code2 size={13} />
+                    <span>Tech & Engineering Workspace</span>
+                  </span>
+                  <span className="text-[11px] text-ink-400 font-medium hidden sm:inline">
+                    🔒 BDM work is hidden · Confidential to Tech team & CEO
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* User selector */}
           <div className="ml-2 inline-flex items-center gap-1">
@@ -632,7 +683,9 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
               onChange={(e) => setSelectedUserId(e.target.value)}
               className="rounded-lg border border-ink-200 bg-white py-1 pl-2 pr-6 text-xs font-medium text-ink-700 outline-none"
             >
-              <option value="all">Everyone's Work</option>
+              <option value="all">
+                {currentUser.isCeo ? "Everyone's Work" : `${currentUser.userDepartment} Team Work`}
+              </option>
               {users.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.name} ({u.role.name.split(" ")[0]})
@@ -798,14 +851,33 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
             </div>
 
             {/* Department Breakdown Bar */}
-            <div className="mt-3 flex items-center justify-between text-[11px] text-ink-500 border-t border-ink-100 pt-2">
-              <span className="flex items-center gap-1 text-violet-700 font-medium">
-                <Briefcase size={12} /> BDM: {stats.bdm.done}/{stats.bdm.total} ({stats.bdm.percent}%)
-              </span>
-              <span className="flex items-center gap-1 text-sky-700 font-medium">
-                <Code2 size={12} /> Tech: {stats.tech.done}/{stats.tech.total} ({stats.tech.percent}%)
-              </span>
-            </div>
+            {currentUser.isCeo ? (
+              <div className="mt-3 flex items-center justify-between text-[11px] text-ink-500 border-t border-ink-100 pt-2">
+                <span className="flex items-center gap-1 text-violet-700 font-medium">
+                  <Briefcase size={12} /> BDM: {stats.bdm.done}/{stats.bdm.total} ({stats.bdm.percent}%)
+                </span>
+                <span className="flex items-center gap-1 text-sky-700 font-medium">
+                  <Code2 size={12} /> Tech: {stats.tech.done}/{stats.tech.total} ({stats.tech.percent}%)
+                </span>
+              </div>
+            ) : (
+              <div className="mt-3 flex items-center justify-between text-[11px] text-ink-500 border-t border-ink-100 pt-2">
+                <span className="flex items-center gap-1 text-ink-700 font-medium">
+                  {currentUser.userDepartment === "TECH" ? (
+                    <>
+                      <Code2 size={12} className="text-sky-600" /> Tech Engineering Progress
+                    </>
+                  ) : (
+                    <>
+                      <Briefcase size={12} className="text-violet-600" /> BDM Sales Progress
+                    </>
+                  )}
+                </span>
+                <span className="font-bold text-ink-700">
+                  {stats.completed} of {stats.total} tasks finished
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Quick Stat: Total Tasks */}
@@ -860,14 +932,27 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
                 onChange={(e) => setQuickTaskTitle(e.target.value)}
                 className="flex-1 bg-transparent text-sm text-ink-900 outline-none placeholder:text-ink-400"
               />
-              <select
-                value={quickTaskDept}
-                onChange={(e) => setQuickTaskDept(e.target.value as any)}
-                className="rounded-md border border-ink-200 bg-ink-50 px-2 py-1 text-xs font-medium text-ink-700"
-              >
-                <option value="BDM">BDM</option>
-                <option value="TECH">TECH</option>
-              </select>
+              {currentUser.isCeo ? (
+                <select
+                  value={quickTaskDept}
+                  onChange={(e) => setQuickTaskDept(e.target.value as any)}
+                  className="rounded-md border border-ink-200 bg-ink-50 px-2 py-1 text-xs font-medium text-ink-700"
+                >
+                  <option value="BDM">BDM</option>
+                  <option value="TECH">TECH</option>
+                </select>
+              ) : (
+                <span
+                  className={clsx(
+                    "rounded px-2 py-0.5 text-[10px] font-bold uppercase",
+                    currentUser.userDepartment === "TECH"
+                      ? "bg-sky-100 text-sky-800"
+                      : "bg-violet-100 text-violet-800"
+                  )}
+                >
+                  {currentUser.userDepartment}
+                </span>
+              )}
               <button
                 type="submit"
                 disabled={!quickTaskTitle.trim()}
@@ -1847,15 +1932,21 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="lbl">Department *</label>
-                  <select
-                    value={taskForm.department}
-                    onChange={(e) => setTaskForm({ ...taskForm, department: e.target.value as any })}
-                    className="input"
-                  >
-                    <option value="BDM">BDM (Sales & Partnerships)</option>
-                    <option value="TECH">TECH (Engineering & DevOps)</option>
-                    <option value="GENERAL">General</option>
-                  </select>
+                  {currentUser.isCeo ? (
+                    <select
+                      value={taskForm.department}
+                      onChange={(e) => setTaskForm({ ...taskForm, department: e.target.value as any })}
+                      className="input"
+                    >
+                      <option value="BDM">BDM (Sales & Partnerships)</option>
+                      <option value="TECH">TECH (Engineering & DevOps)</option>
+                      <option value="GENERAL">General</option>
+                    </select>
+                  ) : (
+                    <div className="input bg-ink-50 font-semibold text-ink-700 flex items-center">
+                      {currentUser.userDepartment === "TECH" ? "TECH (Engineering & DevOps)" : "BDM (Sales & Partnerships)"}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -2007,15 +2098,21 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="lbl">Department *</label>
-                  <select
-                    value={eodForm.department}
-                    onChange={(e) => setEodForm({ ...eodForm, department: e.target.value as any })}
-                    className="input"
-                  >
-                    <option value="BDM">BDM (Sales)</option>
-                    <option value="TECH">TECH (Engineering)</option>
-                    <option value="GENERAL">General</option>
-                  </select>
+                  {currentUser.isCeo ? (
+                    <select
+                      value={eodForm.department}
+                      onChange={(e) => setEodForm({ ...eodForm, department: e.target.value as any })}
+                      className="input"
+                    >
+                      <option value="BDM">BDM (Sales)</option>
+                      <option value="TECH">TECH (Engineering)</option>
+                      <option value="GENERAL">General</option>
+                    </select>
+                  ) : (
+                    <div className="input bg-ink-50 font-semibold text-ink-700 flex items-center">
+                      {currentUser.userDepartment === "TECH" ? "TECH (Engineering)" : "BDM (Sales)"}
+                    </div>
+                  )}
                 </div>
 
                 <div>

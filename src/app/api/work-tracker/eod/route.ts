@@ -6,21 +6,45 @@ import { assertWritable } from "@/lib/access";
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
+function getDepartmentScope(ctx: any): { isCeo: boolean; enforcedDept: "BDM" | "TECH" | null } {
+  const isCeo = Boolean(ctx.user?.isFounder || ctx.role?.key === "SUPER_ADMIN" || ctx.can?.("dashboard.founder"));
+  if (isCeo) return { isCeo: true, enforcedDept: null };
+  if (ctx.role?.key === "TECH_ADMIN" || String(ctx.role?.key).includes("TECH")) {
+    return { isCeo: false, enforcedDept: "TECH" };
+  }
+  return { isCeo: false, enforcedDept: "BDM" };
+}
+
 export const GET = api(null, async (ctx, req) => {
   const url = req.nextUrl;
   const targetDate = url.searchParams.get("date") || new Date().toISOString().slice(0, 10);
   const targetUser = url.searchParams.get("userId") || ctx.user.id;
+  const { isCeo, enforcedDept } = getDepartmentScope(ctx);
 
   // Single user report
+  const reportConditions = [
+    eq(t.dailyEodReports.reportDate, targetDate),
+    eq(t.dailyEodReports.userId, targetUser),
+  ];
+  if (enforcedDept) {
+    reportConditions.push(eq(t.dailyEodReports.department, enforcedDept));
+  }
+
   const report = await db.query.dailyEodReports.findFirst({
-    where: and(eq(t.dailyEodReports.reportDate, targetDate), eq(t.dailyEodReports.userId, targetUser)),
+    where: and(...reportConditions),
     with: {
       user: { columns: { id: true, name: true, email: true } },
     },
   });
 
-  // Recent team EOD reports
+  // Recent team EOD reports (restricted by department unless CEO)
+  const recentConditions = [];
+  if (enforcedDept) {
+    recentConditions.push(eq(t.dailyEodReports.department, enforcedDept));
+  }
+
   const recentReports = await db.query.dailyEodReports.findMany({
+    where: recentConditions.length > 0 ? and(...recentConditions) : undefined,
     with: {
       user: { columns: { id: true, name: true, email: true } },
     },
@@ -28,11 +52,13 @@ export const GET = api(null, async (ctx, req) => {
     limit: 25,
   });
 
-  return { report, recentReports };
+  return { report, recentReports, isCeo, department: enforcedDept || "ALL" };
 });
 
 export const POST = api(null, async (ctx) => {
   assertWritable(ctx);
+  const { enforcedDept } = getDepartmentScope(ctx);
+
   const body = await ctx.json(
     z.object({
       reportDate: z.string().regex(dateRegex),
@@ -45,6 +71,8 @@ export const POST = api(null, async (ctx) => {
       status: z.enum(["DRAFT", "SUBMITTED"]).default("SUBMITTED"),
     })
   );
+
+  const targetDept = enforcedDept ? enforcedDept : body.department;
 
   // Auto-calculate stats from tasks for this date & user
   const userTasks = await db.query.tasks.findMany({
@@ -66,7 +94,7 @@ export const POST = api(null, async (ctx) => {
     .values({
       userId: ctx.user.id,
       reportDate: body.reportDate,
-      department: body.department,
+      department: targetDept,
       summary: body.summary,
       keyWins: body.keyWins ?? null,
       blockers: body.blockers ?? null,
@@ -83,7 +111,7 @@ export const POST = api(null, async (ctx) => {
     .onConflictDoUpdate({
       target: [t.dailyEodReports.userId, t.dailyEodReports.reportDate],
       set: {
-        department: body.department,
+        department: targetDept,
         summary: body.summary,
         keyWins: body.keyWins ?? null,
         blockers: body.blockers ?? null,
@@ -101,4 +129,3 @@ export const POST = api(null, async (ctx) => {
 
   return { ok: true, eod };
 });
-
