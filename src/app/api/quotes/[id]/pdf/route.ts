@@ -29,7 +29,11 @@ export const GET = api<{ id: string }>(["quote.create", "pricing.approve"], asyn
   const fontBold = path.join(process.cwd(), "public", "fonts", "NotoSans-Bold.ttf");
   const hasCustomFont = fs.existsSync(fontRegular) && fs.existsSync(fontBold);
 
-  const doc = new PDFDocument({ size: "A4", margin: 48, info: { Title: `Quotation ${q.number}`, Author: S("company.name") } });
+  const doc = new PDFDocument({
+    size: "A4",
+    margins: { top: 0, bottom: 25, left: 42, right: 42 },
+    info: { Title: `Quotation ${q.number}`, Author: S("company.name") },
+  });
 
   if (hasCustomFont) {
     doc.registerFont("NotoSans", fontRegular);
@@ -53,13 +57,13 @@ export const GET = api<{ id: string }>(["quote.create", "pricing.approve"], asyn
 
   const chunks: Buffer[] = []; doc.on("data", (c) => chunks.push(c));
   const done = new Promise<Buffer>((res) => doc.on("end", () => res(Buffer.concat(chunks))));
-  const W = doc.page.width - 96;
+  const W = doc.page.width - 84;
 
   // Background subtle watermark with official FIVOPAY logo (tilted)
   const watermarkPath = path.join(process.cwd(), "public", "fivopay_logo.png");
   const drawWatermark = () => {
     doc.save();
-    doc.opacity(0.08);
+    doc.opacity(0.06);
     const cx = doc.page.width / 2;
     const cy = doc.page.height / 2;
     // Tilted diagonal watermark (-30 degrees across page)
@@ -75,65 +79,89 @@ export const GET = api<{ id: string }>(["quote.create", "pricing.approve"], asyn
     doc.restore();
   };
   drawWatermark();
-  doc.on("pageAdded", () => {
-    drawWatermark();
-  });
 
-  // header band with official Manalix logo
-  const g = doc.linearGradient(0, 0, doc.page.width, 0); g.stop(0, "#1d4ed8").stop(0.55, "#06b6d4").stop(1, "#7c3aed");
-  doc.rect(0, 0, doc.page.width, 102).fill(g);
+  // Header band with official Manalix logo
+  const headerH = 92;
+  const g = doc.linearGradient(0, 0, doc.page.width, 0);
+  g.stop(0, "#1d4ed8").stop(0.55, "#06b6d4").stop(1, "#7c3aed");
+  doc.rect(0, 0, doc.page.width, headerH).fill(g);
 
   const logoPath = path.join(process.cwd(), "public", "manalix_logo.png");
   if (fs.existsSync(logoPath)) {
     // White rounded badge for high-contrast official logo display
-    doc.roundedRect(48, 16, 114, 70, 8).fill("#ffffff");
-    doc.image(logoPath, 52, 20, { fit: [106, 62], align: "center", valign: "center" });
+    doc.roundedRect(42, 14, 105, 64, 6).fill("#ffffff");
+    doc.image(logoPath, 45, 18, { fit: [99, 56], align: "center", valign: "center" });
 
-    doc.fill("#ffffff").font(fBold).fontSize(18).text(S("company.product") || "Fivopay CBS", 174, 28);
-    doc.font(fRegular).fontSize(9.5).text(S("company.tagline") || "Core Banking & Financial Technology", 174, 54);
+    doc.fill("#ffffff").font(fBold).fontSize(17).text(S("company.product") || "Fivopay CBS", 158, 25, { width: 180 });
+    doc.font(fRegular).fontSize(9).text(S("company.tagline") || "Core Banking & Financial Technology", 158, 48, { width: 180 });
   } else {
-    doc.fill("#ffffff").font(fBold).fontSize(22).text(S("company.product") || "Fivopay CBS", 48, 28);
-    doc.font(fRegular).fontSize(10).text(S("company.tagline") || "Core Banking & Financial Technology", 48, 56);
+    doc.fill("#ffffff").font(fBold).fontSize(20).text(S("company.product") || "Fivopay CBS", 42, 22, { width: 220 });
+    doc.font(fRegular).fontSize(9).text(S("company.tagline") || "Core Banking & Financial Technology", 42, 48, { width: 220 });
   }
 
-  // Header top-right with CIN, GSTIN, 10 Biz Park address
-  doc.fontSize(8.5).font(fBold).fill("#ffffff").text(S("company.name"), 250, 18, { width: W - 202, align: "right" });
-  doc.font(fRegular).fontSize(7.5).fill("#f8fafc")
-    .text(`CIN: ${S("company.cin")} · GSTIN: ${S("company.gstin")}`, { width: W - 202, align: "right" })
-    .text(S("company.address"), { width: W - 202, align: "right" })
-    .text(`Ph: ${S("company.phone")} | Email: ${S("company.email")}`, { width: W - 202, align: "right" });
+  // Header top-right with CIN, GSTIN, registered address
+  const compW = 215;
+  const compX = doc.page.width - 42 - compW;
+  doc.fontSize(8.5).font(fBold).fill("#ffffff").text(S("company.name"), compX, 14, { width: compW, align: "right" });
+  doc.font(fRegular).fontSize(7).fill("#f8fafc")
+    .text(`CIN: ${S("company.cin")} · GSTIN: ${S("company.gstin")}`, compX, doc.y + 1, { width: compW, align: "right" })
+    .text(S("company.address"), compX, doc.y + 1, { width: compW, align: "right" })
+    .text(`Ph: ${S("company.phone")} | Email: ${S("company.email")}`, compX, doc.y + 1, { width: compW, align: "right" });
 
-  doc.fill("#0b1220").font(fBold).fontSize(16).text("COMMERCIAL QUOTATION", 48, 118);
-  if (draft) doc.fill("#b91c1c").fontSize(10).text(`STATUS: ${q.status.replace(/_/g, " ")} — NOT VALID FOR SUBMISSION`, 48, 138);
-  doc.fill("#334155").font(fRegular).fontSize(9.5);
-  const y0 = 154;
-  doc.text(`Quote No: ${q.number}`, 48, y0).text(`Date: ${d(q.createdAt)}`).text(`Valid until: ${d(q.validUntil)}`).text(`Prepared by: ${q.createdBy.name}`);
-  doc.font(fBold).text("To:", 320, y0).font(fRegular).text(q.institution.legalName, 320, doc.y, { width: W - 272 })
-    .text(q.institution.address ?? "", { width: W - 272 });
+  let curY = 108;
+  doc.fill("#0b1220").font(fBold).fontSize(15).text("COMMERCIAL QUOTATION", 42, curY);
+  curY = doc.y + 5;
+  if (draft) {
+    doc.fill("#b91c1c").fontSize(8.5).text(`STATUS: ${q.status.replace(/_/g, " ")} — NOT VALID FOR SUBMISSION`, 42, curY);
+    curY = doc.y + 3;
+  }
 
-  let y = Math.max(doc.y, 220) + 12;
-  doc.font(fBold).fontSize(11).fill("#1d4ed8").text("Scope", 48, y); y = doc.y + 4;
-  doc.font(fRegular).fontSize(9.5).fill("#0b1220").text(cleanText(q.scope || `Fivopay cloud core banking platform for ${q.members.toLocaleString("en-IN")} members across ${q.branches} branch(es), including: ${q.modules.join(", ") || "core modules"}.`), 48, y, { width: W });
+  const metaY = curY;
+  doc.fill("#334155").font(fRegular).fontSize(9);
+  doc.text(`Quote No: ${q.number}`, 42, metaY)
+    .text(`Date: ${d(q.createdAt)}`)
+    .text(`Valid until: ${d(q.validUntil)}`)
+    .text(`Prepared by: ${q.createdBy.name}`);
+  const leftMetaBottom = doc.y;
+
+  doc.font(fBold).text("To:", 310, metaY)
+    .font(fBold).text(q.institution.legalName, 310, doc.y, { width: W - 268 })
+    .font(fRegular).text(q.institution.address ?? "", 310, doc.y, { width: W - 268 });
+  curY = Math.max(leftMetaBottom, doc.y) + 14;
+
+  doc.font(fBold).fontSize(10.5).fill("#1d4ed8").text("Scope", 42, curY);
+  curY = doc.y + 4;
+  doc.font(fRegular).fontSize(9).fill("#0b1220").text(
+    cleanText(q.scope || `Fivopay cloud core banking platform for ${q.members.toLocaleString("en-IN")} members across ${q.branches} branch(es), including: ${q.modules.join(", ") || "core modules"}.`),
+    42,
+    curY,
+    { width: W }
+  );
+  curY = doc.y + 12;
 
   const table = (title: string, rows: [string, string][], total?: [string, string]) => {
-    y = doc.y + 14; doc.font(fBold).fontSize(11).fill("#1d4ed8").text(title, 48, y); y = doc.y + 4;
-    doc.rect(48, y, W, 18).fill("#eef6ff"); doc.fill("#334155").font(fBold).fontSize(9).text("Item", 54, y + 5).text("Amount", 48, y + 5, { width: W - 6, align: "right" }); y += 20;
-    doc.font(fRegular).fill("#0b1220");
+    doc.font(fBold).fontSize(10.5).fill("#1d4ed8").text(title, 42, curY);
+    curY = doc.y + 3;
+    doc.rect(42, curY, W, 18).fill("#eef6ff");
+    doc.fill("#334155").font(fBold).fontSize(8.5).text("Item", 48, curY + 4.5).text("Amount", 42, curY + 4.5, { width: W - 6, align: "right" });
+    curY += 21;
+    doc.font(fRegular).fill("#0b1220").fontSize(9);
     for (const [a, b] of rows) {
       const cleanA = cleanText(a);
       const cleanB = cleanText(b);
-      doc.text(cleanA, 54, y, { width: W - 140 });
+      doc.text(cleanA, 48, curY, { width: W - 140 });
       const h = doc.heightOfString(cleanA, { width: W - 140 });
-      doc.text(cleanB, 48, y, { width: W - 6, align: "right" });
-      y += Math.max(h, 12) + 4;
-      doc.moveTo(48, y - 2).lineTo(48 + W, y - 2).strokeColor("#e2e8f0").stroke();
+      doc.text(cleanB, 42, curY, { width: W - 6, align: "right" });
+      curY += Math.max(h, 12) + 5;
+      doc.moveTo(42, curY - 2.5).lineTo(42 + W, curY - 2.5).strokeColor("#e2e8f0").stroke();
     }
     if (total) {
-      doc.font(fBold).text(cleanText(total[0]), 54, y + 2).text(cleanText(total[1]), 48, y + 2, { width: W - 6, align: "right" });
-      y += 16;
+      doc.font(fBold).fontSize(9).text(cleanText(total[0]), 48, curY + 3.5).text(cleanText(total[1]), 42, curY + 3.5, { width: W - 6, align: "right" });
+      curY += 17;
     }
-    doc.y = y;
+    curY += 10;
   };
+
   const monthly = q.lines.filter((l) => l.kind === "MONTHLY");
   const once = q.lines.filter((l) => l.kind === "ONE_TIME");
   const setupDiscPct = Number((q as any).setupDiscountPct || 0);
@@ -157,46 +185,56 @@ export const GET = api<{ id: string }>(["quote.create", "pricing.approve"], asyn
     [`GST @ ${q.gstRate}%`, rs((oNet * q.gstRate) / 100)],
   ], ["One-time total (incl. GST)", rs(oNet * (1 + q.gstRate / 100))]);
 
-  doc.font(fBold).fontSize(9).fill("#1e293b").text("Payment terms: 100% full payment for One-Time Setup & Migration upon agreement signing.", 52, doc.y + 6);
-  doc.y += 6;
+  doc.font(fBold).fontSize(8.5).fill("#1e293b").text("Payment terms: 100% full payment for One-Time Setup & Migration upon agreement signing.", 42, curY);
+  curY = doc.y + 12;
 
-  // Bank details for remittance (Clean 4-row grid with no text collisions)
-  if (doc.y > 540) doc.addPage();
-  y = doc.y + 12;
-  doc.font(fBold).fontSize(10).fill("#1d4ed8").text("Bank Details for Remittance (NEFT / RTGS / IMPS)", 48, y);
-  y = doc.y + 4;
-  doc.roundedRect(48, y, W, 68, 6).fillAndStroke("#f8fafc", "#cbd5e1");
+  // Bank details for remittance (Clean 3-row structured card)
+  doc.font(fBold).fontSize(10).fill("#1d4ed8").text("Bank Details for Remittance (NEFT / RTGS / IMPS)", 42, curY);
+  curY = doc.y + 4;
+  doc.roundedRect(42, curY, W, 56, 6).fillAndStroke("#f8fafc", "#cbd5e1");
 
-  doc.fill("#334155").font(fBold).fontSize(8.5);
-  // Row 1: Full width Beneficiary Name
-  doc.text("Beneficiary Name:", 58, y + 8).font(fBold).fill("#0f172a")
-    .text(S("company.bankBeneficiary") || "SAIKHLEARN & SCHOLAR NEXUS PRIVATE LIMITED", 150, y + 8, { width: W - 110 });
+  doc.fill("#334155").font(fBold).fontSize(8);
+  // Row 1: Beneficiary Name
+  doc.text("Beneficiary:", 52, curY + 8).font(fBold).fill("#0f172a")
+    .text(S("company.bankBeneficiary") || "SAIKHLEARN & SCHOLAR NEXUS PRIVATE LIMITED", 112, curY + 8, { width: W - 75 });
 
-  // Row 2: Bank Name | Account Type
-  doc.font(fBold).fill("#334155").text("Bank Name:", 58, y + 22).font(fRegular).fill("#0f172a")
-    .text(S("company.bankName") || "RBL Bank Limited", 150, y + 22, { width: 160 });
-  doc.font(fBold).fill("#334155").text("Account Type:", 320, y + 22).font(fRegular).fill("#0f172a")
-    .text(S("company.bankAccountType") || "Current Account", 395, y + 22, { width: W - 355 });
+  // Row 2: Bank | A/C No | IFSC | Type (Proportionately spaced to stay well within box boundaries)
+  doc.font(fBold).fill("#334155").text("Bank:", 52, curY + 23).font(fRegular).fill("#0f172a")
+    .text(S("company.bankName") || "RBL Bank Limited", 80, curY + 23, { width: 92 });
+  doc.font(fBold).fill("#334155").text("A/C No:", 178, curY + 23).font(fBold).fill("#0f172a")
+    .text(S("company.bankAccount") || "409002566529", 215, curY + 23, { width: 90 });
+  doc.font(fBold).fill("#334155").text("IFSC:", 310, curY + 23).font(fBold).fill("#0f172a")
+    .text(S("company.bankIfsc") || "RATN0000157", 338, curY + 23, { width: 75 });
+  doc.font(fBold).fill("#334155").text("Type:", 422, curY + 23).font(fRegular).fill("#0f172a")
+    .text(S("company.bankAccountType") || "Current Account", 450, curY + 23, { width: 95 });
 
-  // Row 3: Account Number | IFSC Code
-  doc.font(fBold).fill("#334155").text("Account Number:", 58, y + 36).font(fBold).fill("#0f172a")
-    .text(S("company.bankAccount") || "409002566529", 150, y + 36, { width: 160 });
-  doc.font(fBold).fill("#334155").text("IFSC Code:", 320, y + 36).font(fBold).fill("#0f172a")
-    .text(S("company.bankIfsc") || "RATN0000157", 395, y + 36, { width: W - 355 });
+  // Row 3: Branch
+  doc.font(fBold).fill("#334155").text("Branch:", 52, curY + 38).font(fRegular).fill("#0f172a")
+    .text(S("company.bankBranch") || "Pune Camp Branch, Ground Floor 11, Moledina Road, Camp, Pune - 411001", 92, curY + 38, { width: W - 55 });
 
-  // Row 4: Full width Branch
-  doc.font(fBold).fill("#334155").text("Branch:", 58, y + 50).font(fRegular).fill("#0f172a")
-    .text(S("company.bankBranch") || "Pune Camp Branch, Ground Floor 11, Moledina Road, Camp, Pune - 411001", 150, y + 50, { width: W - 110 });
+  curY += 68;
 
-  doc.y = y + 78;
-
-  if (doc.y > 640) doc.addPage();
-  y = doc.y + 10; doc.font(fBold).fontSize(11).fill("#1d4ed8").text("Commercial terms", 48, y);
+  // Commercial terms (Full Width)
+  doc.font(fBold).fontSize(10).fill("#1d4ed8").text("Commercial terms", 42, curY);
+  curY = doc.y + 4;
   const displayTerms = (q.terms ?? "").replace(/Implementation fee payable per milestones\.?/gi, "One-Time Setup & Migration fee is payable 100% in advance upon agreement signing.");
-  doc.font(fRegular).fontSize(9).fill("#0b1220").text(cleanText(displayTerms), 48, doc.y + 4, { width: W });
-  doc.moveDown(0.6).fill("#334155").fontSize(8.5).text(cleanText(S("pricing.thirdPartyNote")), { width: W });
-  doc.moveDown(2).fill("#0b1220").fontSize(9.5).text(`For ${S("company.name")}`, 48).moveDown(2.5).text("Authorised Signatory");
-  const fy = doc.page.height - 40;
+  doc.font(fRegular).fontSize(8.5).fill("#0b1220").text(cleanText(displayTerms), 42, curY, { width: W, lineGap: 2 });
+  curY = doc.y + 5;
+  if (S("pricing.thirdPartyNote")) {
+    doc.font(fRegular).fontSize(8).fill("#475569").text(cleanText(S("pricing.thirdPartyNote")), 42, curY, { width: W });
+    curY = doc.y + 18;
+  } else {
+    curY += 14;
+  }
+
+  // Signature block positioned cleanly below Commercial Terms on the right side
+  const sigW = 240;
+  const sigX = doc.page.width - 42 - sigW;
+  const maxSigY = doc.page.height - 75;
+  const sigY = Math.min(curY, maxSigY - 45);
+
+  doc.font(fBold).fontSize(9.5).fill("#0b1220").text(`For ${S("company.name")}`, sigX, sigY, { width: sigW, align: "right" });
+  doc.font(fBold).fontSize(9.5).fill("#0b1220").text("Authorised Signatory", sigX, sigY + 45, { width: sigW, align: "right" });
 
   doc.end();
   const buf = await done;
