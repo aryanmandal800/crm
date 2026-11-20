@@ -8,7 +8,8 @@ import { findPin } from "@/lib/maharashtraPins";
 import { inferStateFromPin, findIndiaLocation } from "@/lib/indiaGeography";
 
 const searchSchema = z.object({
-  pin: z.string().trim().regex(/^\d{6}$/, "Enter a valid 6-digit Indian PIN code"),
+  pin: z.string().trim().optional(),
+  query: z.string().trim().optional(),
   category: z.string().trim().default("Cooperative Credit Society"),
   pageSize: z.number().int().min(1).max(100).default(20),
   city: z.string().trim().optional(),
@@ -130,20 +131,29 @@ export const POST = api(null, async (ctx) => {
   }
 
   const category = body.category?.trim() || "Cooperative Credit Society";
-  const pin = body.pin.trim();
+  const rawInput = (body.pin || body.query || "").trim();
+  const pinMatch = rawInput.match(/\b\d{6}\b/);
+  const pin = pinMatch ? pinMatch[0] : (body.pin?.trim() || "");
 
-  // Automatically resolve location details from PIN code
-  const loc = findIndiaLocation(pin) || (findPin(pin) ? { ...findPin(pin)!, state: "Maharashtra" } : null);
-  const inferredState = inferStateFromPin(pin);
-  const city = loc?.city || body.city || "";
+  if (!pin && !rawInput) {
+    throw new HttpError(400, "Please enter a valid 6-digit PIN code or location keyword");
+  }
+
+  // Automatically resolve location details from PIN code or input
+  const loc = pin ? (findIndiaLocation(pin) || (findPin(pin) ? { ...findPin(pin)!, state: "Maharashtra" } : null)) : null;
+  const inferredState = pin ? inferStateFromPin(pin) : null;
+  const city = loc?.city || body.city || (!pin ? rawInput : "");
   const state = loc?.state || inferredState || body.state || "";
 
   // Build high-relevance search query for Google Places
-  const locParts: string[] = [pin];
-  if (city) locParts.push(city);
-  if (state && state !== "All India") locParts.push(state);
+  const locParts: string[] = [];
+  if (pin) locParts.push(pin);
+  if (city && !locParts.includes(city)) locParts.push(city);
+  if (state && state !== "All India" && !locParts.includes(state)) locParts.push(state);
 
-  const textQuery = `${category} in ${locParts.join(" ")}, India`.replace(/\s+/g, " ").trim();
+  const textQuery = locParts.length > 0
+    ? `${category} in ${locParts.join(" ")}, India`.replace(/\s+/g, " ").trim()
+    : `${category} in ${rawInput}, India`.replace(/\s+/g, " ").trim();
   const fieldMask = [
     "places.id",
     "places.displayName",
@@ -203,7 +213,7 @@ export const POST = api(null, async (ctx) => {
       ...p,
       entityType,
       pinCode: getPin(p),
-      matchScore: score(p, body.pin, city, state)
+      matchScore: score(p, pin, city, state)
     };
   });
 
@@ -251,7 +261,7 @@ export const POST = api(null, async (ctx) => {
   const bankCount = classified.filter((p) => p.entityType === "BANK").length;
 
   return {
-    targetPin: body.pin,
+    targetPin: pin,
     query: textQuery,
     total: placesWithLeadStatus.length,
     rawTotal: classified.length,
@@ -259,7 +269,7 @@ export const POST = api(null, async (ctx) => {
     housingCount,
     bankCount,
     societyCount: creditCount, // For backwards compatibility
-    exactMatches: body.pin ? placesWithLeadStatus.filter((p: any) => p.pinCode === body.pin).length : placesWithLeadStatus.length,
+    exactMatches: pin ? placesWithLeadStatus.filter((p: any) => p.pinCode === pin).length : placesWithLeadStatus.length,
     places: placesWithLeadStatus
   };
 });
