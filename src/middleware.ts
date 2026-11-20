@@ -12,17 +12,24 @@ export function middleware(req: NextRequest) {
   ) return NextResponse.next();
   const authHeader = req.headers.get("authorization");
   const hasBearer = authHeader?.startsWith("Bearer ");
+  const queryToken = req.nextUrl.searchParams.get("token");
   const hasCookie = Boolean(req.cookies.get("fp_session"));
+  const token = hasBearer ? authHeader!.slice(7).trim() : queryToken;
 
-  if (!hasCookie && !hasBearer) {
+  if (!hasCookie && !token) {
     if (pathname.startsWith("/api/")) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
     const url = req.nextUrl.clone(); url.pathname = "/login"; url.search = ""; return NextResponse.redirect(url);
   }
 
-  // If mobile sends Bearer token but no cookie, copy it into request cookies for downstream getCtx
-  if (!hasCookie && hasBearer) {
-    const token = authHeader!.slice(7).trim();
-    const res = NextResponse.next();
+  // If mobile sends Bearer token or query token but no cookie, copy it into request headers & cookies for downstream getCtx
+  if (!hasCookie && token) {
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("authorization", `Bearer ${token}`);
+    const res = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
     res.cookies.set("fp_session", token);
     return res;
   }
