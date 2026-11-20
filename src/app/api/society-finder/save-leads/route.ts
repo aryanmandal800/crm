@@ -310,7 +310,7 @@ export const POST = api(null, async (ctx) => {
         name: `Google Places — Society Finder (PIN ${freshToInsert[i].pinCode || body.targetPin || "Search"})`,
         url: freshToInsert[i].mapsUrl,
         accessedAt,
-        evidence: `Discovered and added via Society Finder on ${accessedAt.toLocaleDateString("en-IN")}`,
+        evidence: `Discovered and added via Society Finder on ${accessedAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}`,
         fieldKeys: ["legalName", "address", "pinCode", "landline", "website"],
         classification: "PUBLICLY_REPORTED" as const,
         addedById: ctx.user.id

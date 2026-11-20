@@ -137,7 +137,7 @@ export function SocietyFinderClient() {
         setIsRestoredFromCache(true);
         if (cached.timestamp) {
           const d = new Date(cached.timestamp);
-          setCachedTimeStr(d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+          setCachedTimeStr(d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" }));
         }
       }
     } catch {
@@ -471,7 +471,7 @@ export function SocietyFinderClient() {
           })
         );
         const d = new Date(now);
-        setCachedTimeStr(d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+        setCachedTimeStr(d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" }));
       } catch (cacheErr) {
         console.warn("Failed to cache society finder results:", cacheErr);
       }

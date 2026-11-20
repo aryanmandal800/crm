@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   };
   if (!u) { await verifyPassword(body.data.password, DUMMY); return fail("unknown user"); }
   if (!u.active) return fail("disabled");
-  if (u.lockedUntil && u.lockedUntil > new Date()) return NextResponse.json({ error: `Account locked. Try again after ${u.lockedUntil.toLocaleTimeString("en-IN")}.` }, { status: 429 });
+  if (u.lockedUntil && u.lockedUntil > new Date()) return NextResponse.json({ error: `Account locked. Try again after ${u.lockedUntil.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour12: true })}.` }, { status: 429 });
   if (!(await verifyPassword(body.data.password, u.passwordHash))) {
     const n = u.failedLogins + 1;
     await db.update(t.users).set({ failedLogins: n >= MAX_FAILS ? 0 : n, lockedUntil: n >= MAX_FAILS ? new Date(Date.now() + LOCK_MIN * 60000) : null }).where(eq(t.users.id, u.id));

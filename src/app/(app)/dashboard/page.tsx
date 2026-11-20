@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requirePage } from "@/lib/auth";
 import { activityKpis, leadKpis, ownerFilter, pipelineKpis, salesPerformance, stageFunnel, talukaCoverage, topOpportunities, typePipeline } from "@/lib/metrics";
-import { addDays, dt, inr, num, startOfDay } from "@/lib/format";
+import { addDays, dt, inr, num, startOfDay, getIndianTodayStr } from "@/lib/format";
 import { BandBadge, Card, PageHeader, Stat, Table } from "@/components/ui";
 import { BarChartC, PieC } from "@/components/client/Charts";
 import { OPPORTUNITY_CATEGORIES } from "@/lib/scoring";
@@ -34,7 +34,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
     <h2 className="h2 mb-2">Sales activity · last {days} days</h2>
     <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-      <Stat label="Calls completed" value={ak.calls} href={`/activities?type=CALL&from=${since.toISOString().slice(0, 10)}`} />
+      <Stat label="Calls completed" value={ak.calls} href={`/activities?type=CALL&from=${getIndianTodayStr(since)}`} />
       <Stat label="Decision-makers reached" value={ak.dms} href="/activities" /><Stat label="Meetings" value={ak.meetings} href="/activities?type=MEETING" />
       <Stat label="Demos" value={ak.demos} href="/activities?type=DEMO" /><Stat label="Meaningful conversations" value={ak.meaningful} /><Stat label="All activities" value={ak.total} href="/activities" />
     </div>

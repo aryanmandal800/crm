@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { assertWritable, canAssignTo, dealScope, getInstitutionOr404 } from "@/lib/access";
 import { audit } from "@/lib/audit";
 import { bad, forbidden } from "@/lib/errors";
+import { parseIndianDate } from "@/lib/format";
 
 export const GET = api(["deal.view"], async (ctx, req) => {
   const sp = req.nextUrl.searchParams;
@@ -57,7 +58,7 @@ export const GET = api(["deal.view"], async (ctx, req) => {
   return { deals };
 });
 
-const d = z.preprocess((v) => (v === "" || v == null ? null : new Date(v as string)), z.date().nullable()).optional();
+const d = z.preprocess((v) => (v === "" || v == null ? null : typeof v === "string" ? parseIndianDate(v) : new Date(v as any)), z.date().nullable()).optional();
 export const POST = api(["deal.create"], async (ctx) => {
   assertWritable(ctx);
   const b = await ctx.json(z.object({

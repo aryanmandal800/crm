@@ -31,6 +31,7 @@ import {
   Eye,
   History,
 } from "lucide-react";
+import { getIndianTodayStr, INDIAN_TIMEZONE } from "@/lib/format";
 
 export type TaskItem = {
   id: string;
@@ -115,24 +116,26 @@ interface WorkTrackerProps {
   institutions: InstitutionOption[];
 }
 
-// Helpers
+// Helpers strictly in Indian Standard Time (Asia/Kolkata)
 function formatDisplayDate(dateStr: string) {
   const [y, m, d] = dateStr.split("-").map(Number);
-  const date = new Date(y, m - 1, d);
+  const date = new Date(Date.UTC(y, m - 1, d, 6, 0, 0));
   return date.toLocaleDateString("en-IN", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone: INDIAN_TIMEZONE,
   });
 }
 
 function formatShortDate(dateStr: string) {
   const [y, m, d] = dateStr.split("-").map(Number);
-  const date = new Date(y, m - 1, d);
+  const date = new Date(Date.UTC(y, m - 1, d, 6, 0, 0));
   return date.toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "short",
+    timeZone: INDIAN_TIMEZONE,
   });
 }
 
@@ -143,6 +146,7 @@ function formatTime(isoStr: string | null | undefined) {
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,
+    timeZone: INDIAN_TIMEZONE,
   });
 }
 
@@ -152,38 +156,37 @@ function formatDateTime(isoStr: string | null | undefined) {
   return d.toLocaleString("en-IN", {
     day: "2-digit",
     month: "short",
+    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,
+    timeZone: INDIAN_TIMEZONE,
   });
 }
 
 function addDaysToDateStr(dateStr: string, days: number): string {
   const [y, m, d] = dateStr.split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  date.setDate(date.getDate() + days);
+  const date = new Date(Date.UTC(y, m - 1, d + days));
   return date.toISOString().slice(0, 10);
 }
 
 function getWeekDays(dateStr: string): string[] {
   const [y, m, d] = dateStr.split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  const day = date.getDay(); // 0 is Sunday, 1 is Monday
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const day = date.getUTCDay(); // 0 is Sunday, 1 is Monday
   const diffToMonday = day === 0 ? -6 : 1 - day;
-  const monday = new Date(date);
-  monday.setDate(date.getDate() + diffToMonday);
+  const monday = new Date(Date.UTC(y, m - 1, d + diffToMonday));
 
   const days: string[] = [];
   for (let i = 0; i < 7; i++) {
-    const cur = new Date(monday);
-    cur.setDate(monday.getDate() + i);
+    const cur = new Date(Date.UTC(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate() + i));
     days.push(cur.toISOString().slice(0, 10));
   }
   return days;
 }
 
 export function WorkTracker({ currentUser, users, institutions }: WorkTrackerProps) {
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const todayStr = useMemo(() => getIndianTodayStr(), []);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const initialDept: "ALL" | "BDM" | "TECH" = currentUser.isCeo ? "ALL" : (currentUser.userDepartment as "BDM" | "TECH");
   const [department, setDepartment] = useState<"ALL" | "BDM" | "TECH">(initialDept);
@@ -241,8 +244,9 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
     }
     if (view === "month") {
       const [y, m] = selectedDate.split("-").map(Number);
-      const start = new Date(y, m - 1, 1).toISOString().slice(0, 10);
-      const end = new Date(y, m, 0).toISOString().slice(0, 10);
+      const start = `${y}-${String(m).padStart(2, "0")}-01`;
+      const endDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+      const end = `${y}-${String(m).padStart(2, "0")}-${String(endDay).padStart(2, "0")}`;
       return { startDate: start, endDate: end };
     }
     return { startDate: selectedDate, endDate: selectedDate };
@@ -524,9 +528,10 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
     if (view === "week") {
       setSelectedDate(addDaysToDateStr(selectedDate, -7));
     } else if (view === "month") {
-      const [y, m, d] = selectedDate.split("-").map(Number);
-      const prevM = new Date(y, m - 2, 1);
-      setSelectedDate(prevM.toISOString().slice(0, 10));
+      const [y, m] = selectedDate.split("-").map(Number);
+      const prevY = m === 1 ? y - 1 : y;
+      const prevM = m === 1 ? 12 : m - 1;
+      setSelectedDate(`${prevY}-${String(prevM).padStart(2, "0")}-01`);
     } else {
       setSelectedDate(addDaysToDateStr(selectedDate, -1));
     }
@@ -536,9 +541,10 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
     if (view === "week") {
       setSelectedDate(addDaysToDateStr(selectedDate, 7));
     } else if (view === "month") {
-      const [y, m, d] = selectedDate.split("-").map(Number);
-      const nextM = new Date(y, m, 1);
-      setSelectedDate(nextM.toISOString().slice(0, 10));
+      const [y, m] = selectedDate.split("-").map(Number);
+      const nextY = m === 12 ? y + 1 : y;
+      const nextM = m === 12 ? 1 : m + 1;
+      setSelectedDate(`${nextY}-${String(nextM).padStart(2, "0")}-01`);
     } else {
       setSelectedDate(addDaysToDateStr(selectedDate, 1));
     }
@@ -788,7 +794,14 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
             {view === "week"
               ? `Week of ${formatShortDate(startDate)} – ${formatShortDate(endDate)}`
               : view === "month"
-              ? new Date(selectedDate).toLocaleDateString("en-IN", { month: "long", year: "numeric" })
+              ? (() => {
+                  const [y, m] = selectedDate.split("-").map(Number);
+                  return new Date(Date.UTC(y, m - 1, 1, 6, 0, 0)).toLocaleDateString("en-IN", {
+                    month: "long",
+                    year: "numeric",
+                    timeZone: INDIAN_TIMEZONE,
+                  });
+                })()
               : formatDisplayDate(selectedDate)}
           </div>
         </div>
@@ -1376,7 +1389,13 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-ink-900">
-                        {new Date(dayStr).toLocaleDateString("en-IN", { weekday: "short" })}
+                        {(() => {
+                          const [y, m, d] = dayStr.split("-").map(Number);
+                          return new Date(Date.UTC(y, m - 1, d, 6, 0, 0)).toLocaleDateString("en-IN", {
+                            weekday: "short",
+                            timeZone: INDIAN_TIMEZONE,
+                          });
+                        })()}
                       </span>
                       {isDayToday && (
                         <span className="rounded bg-brand-100 px-1.5 py-0.2 text-[10px] font-bold text-brand-700">
@@ -1495,7 +1514,15 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
           <div className="flex items-center justify-between text-xs text-ink-500">
             <span>Click any day to jump directly into its daily to-do and EOD view.</span>
             <span className="font-semibold text-brand-600">
-              Month of {new Date(selectedDate).toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
+              Month of{" "}
+              {(() => {
+                const [y, m] = selectedDate.split("-").map(Number);
+                return new Date(Date.UTC(y, m - 1, 1, 6, 0, 0)).toLocaleDateString("en-IN", {
+                  month: "long",
+                  year: "numeric",
+                  timeZone: INDIAN_TIMEZONE,
+                });
+              })()}
             </span>
           </div>
 
@@ -1509,12 +1536,12 @@ export function WorkTracker({ currentUser, users, institutions }: WorkTrackerPro
             {/* Days of Month calculation */}
             {(() => {
               const [y, m] = selectedDate.split("-").map(Number);
-              const firstDay = new Date(y, m - 1, 1);
-              const lastDay = new Date(y, m, 0);
-              const daysInMonth = lastDay.getDate();
+              const firstDay = new Date(Date.UTC(y, m - 1, 1));
+              const lastDay = new Date(Date.UTC(y, m, 0));
+              const daysInMonth = lastDay.getUTCDate();
 
               // Day of week for first day (0=Sun, 1=Mon... convert to 0=Mon)
-              let startOffset = firstDay.getDay() - 1;
+              let startOffset = firstDay.getUTCDay() - 1;
               if (startOffset === -1) startOffset = 6;
 
               const cells = [];

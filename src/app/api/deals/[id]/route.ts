@@ -7,8 +7,9 @@ import { audit } from "@/lib/audit";
 import { bad, forbidden } from "@/lib/errors";
 import { ensureOnboarding } from "@/lib/deals";
 import { notify, superAdminIds } from "@/lib/notify";
+import { parseIndianDate } from "@/lib/format";
 
-const d = z.preprocess((v) => (v === "" || v == null ? null : new Date(v as string)), z.date().nullable()).optional();
+const d = z.preprocess((v) => (v === "" || v == null ? null : typeof v === "string" ? parseIndianDate(v) : new Date(v as any)), z.date().nullable()).optional();
 const s = z.preprocess((v) => (typeof v === "string" ? (v.trim() || null) : v), z.string().max(2000).nullable()).optional();
 const patchSchema = z.object({
   title: z.string().trim().min(3).max(200).optional(), stageId: z.string().uuid().optional(), ownerId: z.string().uuid().optional(),

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db, t } from "@/db";
 import { api } from "@/lib/api";
 import { assertWritable } from "@/lib/access";
+import { getIndianTodayStr } from "@/lib/format";
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -18,7 +19,7 @@ function getDepartmentScope(ctx: any): { isCeo: boolean; enforcedDept: "BDM" | "
 
 export const GET = api(null, async (ctx, req) => {
   const url = req.nextUrl;
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = getIndianTodayStr();
   const targetDate = url.searchParams.get("date") || todayStr;
   const startDate = url.searchParams.get("startDate");
   const endDate = url.searchParams.get("endDate");
@@ -46,16 +47,18 @@ export const GET = api(null, async (ctx, req) => {
     conditions.push(eq(t.tasks.department, department));
   }
 
-  // Date filter
+  // Date filter (Strictly evaluated in Indian Standard Time Asia/Kolkata)
   if (startDate && endDate) {
+    const startUtc = new Date(`${startDate}T00:00:00+05:30`);
+    const endUtc = new Date(`${endDate}T23:59:59.999+05:30`);
     conditions.push(
       or(
         and(gte(t.tasks.scheduledDate, startDate), lte(t.tasks.scheduledDate, endDate)),
         and(
           sql`${t.tasks.scheduledDate} IS NULL`,
           or(
-            and(gte(t.tasks.dueAt, new Date(startDate)), lte(t.tasks.dueAt, new Date(endDate + "T23:59:59.999Z"))),
-            and(gte(t.tasks.createdAt, new Date(startDate)), lte(t.tasks.createdAt, new Date(endDate + "T23:59:59.999Z")))
+            and(gte(t.tasks.dueAt, startUtc), lte(t.tasks.dueAt, endUtc)),
+            and(gte(t.tasks.createdAt, startUtc), lte(t.tasks.createdAt, endUtc))
           )
         )
       )
@@ -65,8 +68,8 @@ export const GET = api(null, async (ctx, req) => {
     conditions.push(
       or(
         eq(t.tasks.scheduledDate, targetDate),
-        and(sql`${t.tasks.scheduledDate} IS NULL`, sql`to_char(${t.tasks.dueAt}, 'YYYY-MM-DD') = ${targetDate}`),
-        and(sql`${t.tasks.scheduledDate} IS NULL AND ${t.tasks.dueAt} IS NULL`, sql`to_char(${t.tasks.createdAt}, 'YYYY-MM-DD') = ${targetDate}`)
+        and(sql`${t.tasks.scheduledDate} IS NULL`, sql`to_char(${t.tasks.dueAt} AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD') = ${targetDate}`),
+        and(sql`${t.tasks.scheduledDate} IS NULL AND ${t.tasks.dueAt} IS NULL`, sql`to_char(${t.tasks.createdAt} AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD') = ${targetDate}`)
       )
     );
   }
@@ -118,7 +121,7 @@ export const GET = api(null, async (ctx, req) => {
   // Day-wise stats for week and month view
   const dayStats: Record<string, { total: number; completed: number; pending: number; inProgress: number; blocked: number; percentage: number }> = {};
   for (const item of rawTasks) {
-    const dayKey = item.scheduledDate || (item.dueAt ? item.dueAt.toISOString().slice(0, 10) : item.createdAt.toISOString().slice(0, 10));
+    const dayKey = item.scheduledDate || (item.dueAt ? getIndianTodayStr(item.dueAt) : getIndianTodayStr(item.createdAt));
     if (!dayStats[dayKey]) {
       dayStats[dayKey] = { total: 0, completed: 0, pending: 0, inProgress: 0, blocked: 0, percentage: 0 };
     }
@@ -188,7 +191,7 @@ export const POST = api(null, async (ctx) => {
       description: z.string().max(4000).nullable().optional(),
       department: z.enum(["BDM", "TECH", "GENERAL"]).default("GENERAL"),
       category: z.string().max(100).nullable().optional(),
-      scheduledDate: z.string().regex(dateRegex).default(() => new Date().toISOString().slice(0, 10)),
+      scheduledDate: z.string().regex(dateRegex).default(() => getIndianTodayStr()),
       priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).default("MEDIUM"),
       status: z.enum(["OPEN", "IN_PROGRESS", "DONE", "BLOCKED"]).default("OPEN"),
       estimatedMinutes: z.number().int().min(0).max(1440).nullable().optional(),

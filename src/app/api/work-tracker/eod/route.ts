@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db, t } from "@/db";
 import { api } from "@/lib/api";
 import { assertWritable } from "@/lib/access";
+import { getIndianTodayStr } from "@/lib/format";
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -17,7 +18,7 @@ function getDepartmentScope(ctx: any): { isCeo: boolean; enforcedDept: "BDM" | "
 
 export const GET = api(null, async (ctx, req) => {
   const url = req.nextUrl;
-  const targetDate = url.searchParams.get("date") || new Date().toISOString().slice(0, 10);
+  const targetDate = url.searchParams.get("date") || getIndianTodayStr();
   const targetUser = url.searchParams.get("userId") || ctx.user.id;
   const { isCeo, enforcedDept } = getDepartmentScope(ctx);
 
@@ -78,7 +79,7 @@ export const POST = api(null, async (ctx) => {
   const userTasks = await db.query.tasks.findMany({
     where: and(
       eq(t.tasks.assigneeId, ctx.user.id),
-      sql`coalesce(${t.tasks.scheduledDate}, to_char(${t.tasks.dueAt}, 'YYYY-MM-DD'), to_char(${t.tasks.createdAt}, 'YYYY-MM-DD')) = ${body.reportDate}`
+      sql`coalesce(${t.tasks.scheduledDate}, to_char(${t.tasks.dueAt} AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD'), to_char(${t.tasks.createdAt} AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD')) = ${body.reportDate}`
     ),
   });
 

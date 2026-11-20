@@ -41,7 +41,7 @@ export function Kanban({ stages, deals, canMove }: { stages: Stage[]; deals: Dea
                     <div className="mt-1 text-ink-500">{d.owner} · ₹{Math.round(d.mrr).toLocaleString("en-IN")}/mo</div>
                     {d.nextAction && <div className="mt-1 text-ink-700">→ {d.nextAction}</div>}
                     <div className="mt-1 flex flex-wrap gap-1">
-                      {d.followUpDate && <span className={clsx("rounded px-1", overdue ? "bg-red-100 text-red-700" : "bg-ink-100")}>{new Date(d.followUpDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</span>}
+                      {d.followUpDate && <span className={clsx("rounded px-1", overdue ? "bg-red-100 text-red-700" : "bg-ink-100")}>{new Date(d.followUpDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "Asia/Kolkata" })}</span>}
                       {stalled && <span className="rounded bg-amber-100 px-1 text-amber-800">stalled</span>}
                       {d.founderFlag && <span className="rounded bg-violet-100 px-1 text-violet-800">founder</span>}
                     </div>

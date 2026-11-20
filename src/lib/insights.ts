@@ -191,8 +191,8 @@ export async function ruleInsights(institutionId: string): Promise<Insights> {
   let next = "Verify official contact details, then place a first call to the secretary/CEO office.";
   if (!i.landline && !i.mobile && !i.email && !dms.length) next = "Research: find an official contact point (registrar record, website, Google listing).";
   else if (dms.length && !acts.length) next = `Call ${dms[0].name} (${dms[0].role.replace(/_/g, " ").toLowerCase()}) to request a 20-minute discovery meeting.`;
-  else if (lastAct?.followUpDate) next = `Follow up as committed on ${lastAct.followUpDate.toLocaleDateString("en-IN")}: ${lastAct.nextAction ?? "continue the conversation"}.`;
-  else if (lastAct) next = `Book a product demo with the decision-maker; last touch was ${lastAct.typeKey.toLowerCase()} on ${lastAct.occurredAt.toLocaleDateString("en-IN")}.`;
+  else if (lastAct?.followUpDate) next = `Follow up as committed on ${lastAct.followUpDate.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}: ${lastAct.nextAction ?? "continue the conversation"}.`;
+  else if (lastAct) next = `Book a product demo with the decision-maker; last touch was ${lastAct.typeKey.toLowerCase()} on ${lastAct.occurredAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}.`;
 
   return {
     whyApproach: `${OPPORTUNITY_CATEGORIES[cat] ?? cat} opportunity; score ${i.score}/100 (${i.scoreBand}).${members ? ` ${members.toLocaleString("en-IN")} members` : ""}${i.branchCount ? `, ${i.branchCount} branches` : ""}.`,

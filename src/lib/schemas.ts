@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { parseIndianDate } from "./format";
 const s = z.preprocess((v) => (typeof v === "string" ? (v.trim() === "" ? null : v.trim()) : v), z.string().max(4000).nullable()).optional();
-const d = z.preprocess((v) => (v === "" || v == null ? null : new Date(v as string)), z.date().nullable()).optional();
+const d = z.preprocess((v) => (v === "" || v == null ? null : typeof v === "string" ? parseIndianDate(v) : new Date(v as any)), z.date().nullable()).optional();
 const conf = z.enum(["LOW", "MEDIUM", "HIGH"]);
 const ver = z.enum(["UNVERIFIED", "PARTIAL", "VERIFIED", "DISPUTED"]);
 const url = z.preprocess((v) => (v === "" ? null : v), z.string().url().max(2000).nullable()).optional();

@@ -11,8 +11,24 @@ export type FieldDef = {
 
 function toInput(v: any, type?: string) {
   if (v == null) return "";
-  if (type === "date") return String(v).slice(0, 10);
-  if (type === "datetime") { const d = new Date(v); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
+  if (type === "date") {
+    try {
+      const d = new Date(v);
+      return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+    } catch {
+      return String(v).slice(0, 10);
+    }
+  }
+  if (type === "datetime") {
+    try {
+      const d = new Date(v);
+      const datePart = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+      const timePart = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
+      return `${datePart}T${timePart}`;
+    } catch {
+      return "";
+    }
+  }
   if (type === "tags") return Array.isArray(v) ? v.join(", ") : v;
   if (type === "json") return typeof v === "string" ? v : JSON.stringify(v, null, 2);
   return v;
@@ -36,7 +52,12 @@ export function JsonForm({ action, method = "POST", fields, initial = {}, submit
     for (const f of fields) {
       let v = vals[f.name];
       if (f.type === "number") v = v === "" ? null : Number(v);
-      else if (f.type === "date" || f.type === "datetime") v = v ? new Date(v).toISOString() : null;
+      else if (f.type === "date") {
+        v = v ? (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(`${v}T00:00:00+05:30`).toISOString() : new Date(v).toISOString()) : null;
+      }
+      else if (f.type === "datetime") {
+        v = v ? (typeof v === "string" && !v.includes("Z") && !v.includes("+") ? new Date(`${v}:00+05:30`).toISOString() : new Date(v).toISOString()) : null;
+      }
       else if (f.type === "tags") v = String(v ?? "").split(",").map((x) => x.trim()).filter(Boolean);
       else if (f.type === "json") { try { v = v ? JSON.parse(v) : null; } catch { setErr(`${f.label}: invalid JSON`); setBusy(false); return; } }
       else if (f.type === "select" && v === "") v = null;

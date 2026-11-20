@@ -1,6 +1,7 @@
 "use client";
 import Papa from "papaparse";
 import { useState } from "react";
+import { getIndianTodayStr } from "@/lib/format";
 
 type O = { value: string; label: string };
 const FIELDS: [string, string[]][] = [
@@ -16,7 +17,7 @@ const FIELDS: [string, string[]][] = [
 export function ImportWizard({ districts, types, owners }: { districts: O[]; types: O[]; owners: O[] }) {
   const [rows, setRows] = useState<Record<string, string>[]>([]); const [headers, setHeaders] = useState<string[]>([]);
   const [map, setMap] = useState<Record<string, string>>({});
-  const [cfg, setCfg] = useState({ districtId: districts[0]?.value ?? "", defaultTypeKey: "", sourceName: "", sourceUrl: "", accessedAt: new Date().toISOString().slice(0, 10), assignTo: "" });
+  const [cfg, setCfg] = useState({ districtId: districts[0]?.value ?? "", defaultTypeKey: "", sourceName: "", sourceUrl: "", accessedAt: getIndianTodayStr(), assignTo: "" });
   const [report, setReport] = useState<any>(null); const [busy, setBusy] = useState(false); const [progress, setProgress] = useState("");
 
   function onFile(f: File) {

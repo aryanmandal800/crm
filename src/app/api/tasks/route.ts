@@ -6,6 +6,7 @@ import { assertWritable, getInstitutionOr404 } from "@/lib/access";
 import { audit } from "@/lib/audit";
 import { forbidden } from "@/lib/errors";
 import { notify } from "@/lib/notify";
+import { parseIndianDate } from "@/lib/format";
 
 export const GET = api(null, async (ctx, req) => {
   const sp = req.nextUrl.searchParams;
@@ -30,7 +31,7 @@ export const GET = api(null, async (ctx, req) => {
   return { tasks: rows };
 });
 
-const d = z.preprocess((v) => (v === "" || v == null ? null : new Date(v as string)), z.date().nullable()).optional();
+const d = z.preprocess((v) => (v === "" || v == null ? null : typeof v === "string" ? parseIndianDate(v) : new Date(v as any)), z.date().nullable()).optional();
 export const POST = api(null, async (ctx) => {
   assertWritable(ctx);
   const b = await ctx.json(z.object({ title: z.string().trim().min(3).max(300), description: z.string().max(4000).nullable().optional(), assigneeId: z.string().uuid().nullable().optional(),

@@ -15,7 +15,7 @@ import "pdfkit/standard-fonts/HelveticaBold";
 import "pdfkit/standard-fonts/HelveticaOblique";
 import "pdfkit/standard-fonts/HelveticaBoldOblique";
 
-const d = (x: Date | null) => (x ? x.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "-");
+const d = (x: Date | null) => (x ? x.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }) : "-");
 
 export const GET = api<{ id: string }>(["quote.create", "pricing.approve"], async (ctx, _r, { id }) => {
   const q = await db.query.quotes.findFirst({ where: eq(t.quotes.id, id), with: { institution: true, createdBy: true } });

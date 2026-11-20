@@ -25,7 +25,7 @@ export default async function CommandCentre() {
   const emptyTalukas = talukas.filter((x) => x.institutions === 0).map((x) => x.name);
 
   return (<>
-    <PageHeader title="Founder's Sales Command Centre" sub={`${today.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}`}
+    <PageHeader title="Founder's Sales Command Centre" sub={`${today.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kolkata" })}`}
       actions={<><Link className="btn-ghost" href="/dashboard">Full analytics</Link>{approvals[0].n > 0 && <Link className="btn-primary" href="/approvals">{approvals[0].n} approval(s) waiting</Link>}</>} />
 
     <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

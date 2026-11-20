@@ -7,6 +7,7 @@ import { bad } from "@/lib/errors";
 import { toCsv, toXlsx, type Sheet } from "@/lib/export";
 import { ownerFilter, salesPerformance, talukaCoverage } from "@/lib/metrics";
 import { allSettings } from "@/lib/settings";
+import { getIndianTodayStr } from "@/lib/format";
 
 const KINDS = ["leads", "activities", "pipeline", "forecast", "performance", "talukas", "pricing", "lost"] as const;
 
@@ -60,7 +61,7 @@ export const GET = api<{ kind: string }>(["reports.export"], async (ctx, req, { 
       { name: "Quotes", rows: await db.select({ number: t.quotes.number, institution: t.institutions.legalName, status: t.quotes.status, model: t.quotes.model, members: t.quotes.members, monthly: t.quotes.monthlyFee, discountPct: t.quotes.discountPct, oneTime: t.quotes.implementationFee, created: t.quotes.createdAt }).from(t.quotes).innerJoin(t.institutions, eq(t.institutions.id, t.quotes.institutionId)).where(instScope(ctx)) }];
   }
   await audit(ctx, "export", "report", kind, null, { format: fmt, rows: sheets.reduce((a, s) => a + s.rows.length, 0), grant: !!ctx.grant });
-  const stamp = new Date().toISOString().slice(0, 10);
+  const stamp = getIndianTodayStr();
   if (fmt === "csv") return new Response(toCsv(sheets[0].rows), { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="fivopay-${kind}-${stamp}.csv"` } });
   const buf = await toXlsx(sheets, `Fivopay CRM export: ${kind} — by ${ctx.user.name}`);
   return new Response(new Uint8Array(buf), { headers: { "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "content-disposition": `attachment; filename="fivopay-${kind}-${stamp}.xlsx"` } });

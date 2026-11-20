@@ -25,7 +25,7 @@ export default async function MyDay() {
   return (<>
     <PageHeader
       title={`Good day, ${ctx.user.name.split(" ")[0]}`}
-      sub={today.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
+      sub={today.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Kolkata" })}
       actions={
         <Link href="/work-tracker" className="btn-primary text-xs">
           Open Work Tracker & EOD

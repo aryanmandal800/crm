@@ -1,6 +1,7 @@
 import { and, eq, isNull, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, t } from "@/db";
+import { parseIndianDate } from "./format";
 
 const STOP = new Set(["the", "co", "op", "operative", "cooperative", "coop", "credit", "society", "societies", "ltd", "limited", "maryadit", "mydt", "sahakari", "sah", "patsanstha", "pat", "sanstha", "pvt", "and"]);
 export function dedupeKey(name: string) {
@@ -32,7 +33,7 @@ const opt = <T extends z.ZodTypeAny>(s: T) => s.optional().nullable();
 const tri = z.enum(["YES", "NO", "UNKNOWN"]);
 const conf = z.enum(["LOW", "MEDIUM", "HIGH"]);
 const ver = z.enum(["UNVERIFIED", "PARTIAL", "VERIFIED", "DISPUTED"]);
-const date = z.preprocess((v) => (v === "" || v == null ? null : new Date(v as string)), z.date().nullable()).optional();
+const date = z.preprocess((v) => (v === "" || v == null ? null : typeof v === "string" ? parseIndianDate(v) : new Date(v as any)), z.date().nullable()).optional();
 const int = z.preprocess((v) => (v === "" || v == null ? null : Number(v)), z.number().int().min(0).nullable()).optional();
 const amt = z.preprocess((v) => (v === "" || v == null ? null : Number(v)), z.number().nullable()).optional();
 const str = z.preprocess((v) => (typeof v === "string" ? (v.trim() === "" ? null : v.trim()) : v), z.string().max(4000).nullable()).optional();

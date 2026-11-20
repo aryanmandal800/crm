@@ -43,12 +43,12 @@ export async function pipelineKpis(owners: string[] | null) {
   const [r] = await q<any>(sql`
     select count(*) filter (where s.is_open) as open, count(*) filter (where s.is_won) as won, count(*) filter (where s.is_lost) as lost,
       coalesce(sum(d.mrr) filter (where s.is_open), 0) as open_mrr, coalesce(sum(d.mrr * coalesce(d.probability_override, s.probability) / 100.0) filter (where s.is_open), 0) as weighted_mrr,
-      coalesce(sum(d.mrr) filter (where s.is_won), 0) as won_mrr, coalesce(sum(d.mrr) filter (where s.is_won and d.won_at >= date_trunc('month', now())), 0) as won_mrr_month,
+      coalesce(sum(d.mrr) filter (where s.is_won), 0) as won_mrr, coalesce(sum(d.mrr) filter (where s.is_won and d.won_at >= (date_trunc('month', now() AT TIME ZONE 'Asia/Kolkata') AT TIME ZONE 'Asia/Kolkata')), 0) as won_mrr_month,
       count(distinct d.institution_id) filter (where s.is_qualified) as qualified,
       count(*) filter (where s.key = 'DISCOVERY') as discovery, count(*) filter (where s.key = 'DEMO') as demo, count(*) filter (where s.key = 'PROPOSAL') as proposal,
       count(*) filter (where s.key = 'NEGOTIATION') as negotiation, count(*) filter (where s.key in ('PILOT_PROPOSED','PILOT_ACTIVE')) as pilots,
       count(*) filter (where s.key = 'PILOT_ACTIVE') as pilots_active,
-      count(*) filter (where s.is_open and d.follow_up_date < date_trunc('day', now())) as overdue,
+      count(*) filter (where s.is_open and d.follow_up_date < (date_trunc('day', now() AT TIME ZONE 'Asia/Kolkata') AT TIME ZONE 'Asia/Kolkata')) as overdue,
       count(*) filter (where s.is_open and d.stage_changed_at < now() - (s.stall_days || ' days')::interval) as stalled
     from deals d join pipeline_stages s on s.id = d.stage_id where ${inOwners(sql`d.owner_id`, owners)}`);
   const won = n(r.won), lost = n(r.lost);
@@ -110,7 +110,7 @@ export async function salesPerformance(owners: string[] | null, since: Date) {
       (select coalesce(sum(d.mrr),0) from deals d where d.owner_id = u.id and d.won_at is not null) as won_mrr,
       (select count(*) from deals d where d.owner_id = u.id and d.lost_at >= ${iso}) as lost,
       (select count(*) from deals d join pipeline_stages s on s.id = d.stage_id where d.owner_id = u.id and s.is_open) as open_deals,
-      (select count(*) from deals d join pipeline_stages s on s.id = d.stage_id where d.owner_id = u.id and s.is_open and (d.follow_up_date is null or d.follow_up_date < date_trunc('day', now()))) as overdue
+      (select count(*) from deals d join pipeline_stages s on s.id = d.stage_id where d.owner_id = u.id and s.is_open and (d.follow_up_date is null or d.follow_up_date < (date_trunc('day', now() AT TIME ZONE 'Asia/Kolkata') AT TIME ZONE 'Asia/Kolkata'))) as overdue
     from users u join roles r on r.id = u.role_id
     where u.active and r.key not in ('TECH_ADMIN') and ${inOwners(sql`u.id`, owners)} order by u.name`)).map((r) => {
       const won = n(r.won), lost = n(r.lost), open = n(r.open_deals), overdue = n(r.overdue);
@@ -135,7 +135,7 @@ export async function dealLists(owners: string[] | null) {
   const base = sql`from deals d join pipeline_stages s on s.id = d.stage_id join institutions i on i.id = d.institution_id join users u on u.id = d.owner_id where ${inOwners(sql`d.owner_id`, owners)}`;
   const cols = sql`d.id, d.title, i.legal_name as inst, i.score_band as band, i.score, s.name as stage, u.name as owner, d.mrr, d.follow_up_date, d.next_action, d.stage_changed_at, d.founder_flag_reason`;
   const [overdue, stalled, founder] = await Promise.all([
-    q<any>(sql`select ${cols} ${base} and s.is_open and (d.follow_up_date is null or d.follow_up_date < date_trunc('day', now())) order by d.follow_up_date nulls first limit 50`),
+    q<any>(sql`select ${cols} ${base} and s.is_open and (d.follow_up_date is null or d.follow_up_date < (date_trunc('day', now() AT TIME ZONE 'Asia/Kolkata') AT TIME ZONE 'Asia/Kolkata')) order by d.follow_up_date nulls first limit 50`),
     q<any>(sql`select ${cols} ${base} and s.is_open and d.stage_changed_at < now() - (s.stall_days || ' days')::interval order by d.stage_changed_at limit 50`),
     q<any>(sql`select ${cols} ${base} and s.is_open and (d.founder_flag or (s.key in ('NEGOTIATION','MGMT_APPROVAL','CONTRACT_PENDING') and i.score_band = 'HOT')) order by d.mrr desc limit 30`),
   ]);
@@ -151,7 +151,7 @@ export async function hotAtRisk(owners: string[] | null) {
     from institutions i left join users u on u.id = i.owner_id
     where i.deleted_at is null and i.score_band = 'HOT' and ${inOwners(sql`i.owner_id`, owners, true)}
       and (not exists (select 1 from activities a where a.institution_id = i.id and a.status = 'DONE' and a.occurred_at > now() - (${days} || ' days')::interval)
-        or exists (select 1 from deals d join pipeline_stages s on s.id = d.stage_id where d.institution_id = i.id and s.is_open and d.follow_up_date < date_trunc('day', now())))
+        or exists (select 1 from deals d join pipeline_stages s on s.id = d.stage_id where d.institution_id = i.id and s.is_open and d.follow_up_date < (date_trunc('day', now() AT TIME ZONE 'Asia/Kolkata') AT TIME ZONE 'Asia/Kolkata')))
     order by i.score desc limit 30`);
 }
 
