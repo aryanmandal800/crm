@@ -1,8 +1,8 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, SQL } from "drizzle-orm";
 import { z } from "zod";
 import { db, t } from "@/db";
 import { api } from "@/lib/api";
-import { assertWritable, getDealOr404, getInstitutionOr404 } from "@/lib/access";
+import { assertWritable, getDealOr404, getInstitutionOr404, instScope } from "@/lib/access";
 import { audit } from "@/lib/audit";
 import { allocateQuoteNumber } from "@/lib/quotes";
 import { priceFor } from "@/lib/pricing";
@@ -10,6 +10,46 @@ import { allSettings } from "@/lib/settings";
 import { notify, superAdminIds } from "@/lib/notify";
 import { addDays, inr } from "@/lib/format";
 import type { Milestone } from "@/db/schema";
+
+export const GET = api(["quote.create", "pricing.approve"], async (ctx, req) => {
+  const sp = req.nextUrl.searchParams;
+  const status = sp.get("status");
+  const institutionId = sp.get("institutionId");
+
+  const conds: (SQL | undefined)[] = [instScope(ctx)];
+  if (status) conds.push(eq(t.quotes.status, status as any));
+  if (institutionId) conds.push(eq(t.quotes.institutionId, institutionId));
+
+  const rows = await db
+    .select({
+      id: t.quotes.id,
+      number: t.quotes.number,
+      serial: t.quotes.serial,
+      status: t.quotes.status,
+      monthlyFee: t.quotes.monthlyFee,
+      implementationFee: t.quotes.implementationFee,
+      migrationFee: t.quotes.migrationFee,
+      discountPct: t.quotes.discountPct,
+      setupDiscountPct: t.quotes.setupDiscountPct,
+      members: t.quotes.members,
+      branches: t.quotes.branches,
+      model: t.quotes.model,
+      validUntil: t.quotes.validUntil,
+      institutionId: t.quotes.institutionId,
+      institutionName: t.institutions.legalName,
+      createdById: t.quotes.createdById,
+      createdByName: t.users.name,
+      createdAt: t.quotes.createdAt,
+    })
+    .from(t.quotes)
+    .innerJoin(t.institutions, eq(t.institutions.id, t.quotes.institutionId))
+    .innerJoin(t.users, eq(t.users.id, t.quotes.createdById))
+    .where(and(...conds))
+    .orderBy(desc(t.quotes.serial))
+    .limit(300);
+
+  return { quotes: rows };
+});
 
 const quoteInput = z.object({
   institutionId: z.string().uuid(), dealId: z.string().uuid().nullable().optional(),

@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db, t } from "@/db";
 import { api } from "@/lib/api";
 import { assertWritable, canAssignTo, getInstitutionOr404 } from "@/lib/access";
@@ -55,6 +55,42 @@ export const PATCH = api<{ id: string }>(["lead.edit", "lead.assign"], async (ct
   await audit(ctx, "update", "institution", id, null, changed);
   if (patch.ownerId && patch.ownerId !== ctx.user.id) await notify([patch.ownerId], { type: "ASSIGNED", title: `Lead assigned: ${after.legalName}`, link: `/leads/${id}` });
   return { id };
+});
+
+export const GET = api<{ id: string }>(["lead.view.all", "lead.view.team", "lead.view.own"], async (ctx, _r, { id }) => {
+  await getInstitutionOr404(ctx, id);
+  const inst = await db.query.institutions.findFirst({
+    where: eq(t.institutions.id, id),
+    with: {
+      type: true,
+      taluka: true,
+      district: true,
+      owner: true,
+      contacts: true,
+      signals: true,
+      sources: true,
+      deals: {
+        with: {
+          stage: true,
+        },
+      },
+    },
+  });
+  if (!inst) throw forbidden("Not found");
+
+  const activities = await db.query.activities.findMany({
+    where: eq(t.activities.institutionId, id),
+    with: {
+      user: {
+        columns: { id: true, name: true, email: true },
+      },
+      contact: true,
+    },
+    orderBy: desc(t.activities.occurredAt),
+    limit: 50,
+  });
+
+  return { institution: inst, activities };
 });
 
 export const DELETE = api<{ id: string }>(["lead.delete"], async (ctx, _r, { id }) => {

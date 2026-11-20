@@ -1,9 +1,23 @@
-import { sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, t } from "@/db";
 import { api } from "@/lib/api";
 import { audit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
+
+export const GET = api(["cr.create", "cr.manage", "cr.approve"], async (ctx) => {
+  const seeAll = ctx.can("cr.manage") || ctx.can("cr.approve");
+  const rows = await db.query.changeRequests.findMany({
+    where: seeAll ? undefined : eq(t.changeRequests.requestedById, ctx.user.id),
+    with: {
+      requestedBy: { columns: { id: true, name: true, email: true } },
+      assignedTo: { columns: { id: true, name: true, email: true } },
+    },
+    orderBy: desc(t.changeRequests.createdAt),
+  });
+
+  return { changeRequests: rows };
+});
 
 export const POST = api(["cr.create"], async (ctx) => {
   const b = await ctx.json(z.object({ title: z.string().trim().min(3).max(200), description: z.string().trim().min(5).max(8000), businessReason: z.string().max(4000).nullable().optional(),

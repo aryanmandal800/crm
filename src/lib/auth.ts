@@ -25,14 +25,19 @@ export function passwordProblem(p: string): string | null {
   return null;
 }
 
-export async function issueSession(userId: string, tokenVersion: number) {
-  const jwt = await new SignJWT({ tv: tokenVersion })
+export async function createSessionToken(userId: string, tokenVersion: number) {
+  return await new SignJWT({ tv: tokenVersion })
     .setProtectedHeader({ alg: "HS256" }).setSubject(userId).setIssuedAt()
     .setExpirationTime(`${SESSION_HOURS}h`).sign(secret());
+}
+
+export async function issueSession(userId: string, tokenVersion: number) {
+  const jwt = await createSessionToken(userId, tokenVersion);
   (await cookies()).set(COOKIE, jwt, {
     httpOnly: true, sameSite: "lax", path: "/", maxAge: SESSION_HOURS * 3600,
     secure: process.env.COOKIE_SECURE !== "false" && process.env.NODE_ENV === "production",
   });
+  return jwt;
 }
 
 export async function clearSession() { (await cookies()).delete(COOKIE); }
@@ -52,7 +57,10 @@ export type Ctx = {
 
 /** Loads and validates the session on every request (revocation, disabled accounts, role changes take effect immediately). */
 export async function getCtx(): Promise<Ctx | null> {
-  const token = (await cookies()).get(COOKIE)?.value;
+  const reqHeaders = await headers();
+  const authHeader = reqHeaders.get("authorization");
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+  const token = bearerToken || (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
   let sub: string, tv: number;
   try {

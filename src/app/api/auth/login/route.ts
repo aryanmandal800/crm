@@ -26,7 +26,27 @@ export async function POST(req: NextRequest) {
     return fail(n >= MAX_FAILS ? "locked" : "bad password");
   }
   await db.update(t.users).set({ failedLogins: 0, lockedUntil: null, lastLoginAt: new Date() }).where(eq(t.users.id, u.id));
-  await issueSession(u.id, u.tokenVersion);
+  const jwt = await issueSession(u.id, u.tokenVersion);
+  const userWithRole = await db.query.users.findFirst({
+    where: eq(t.users.id, u.id),
+    with: { role: true },
+  });
   await db.insert(t.auditLogs).values({ actorId: u.id, actorName: u.name, action: "login", entityType: "auth", entityId: u.id, ip });
-  return NextResponse.json({ ok: true, mustChangePassword: u.mustChangePassword });
+  return NextResponse.json({
+    ok: true,
+    token: jwt,
+    mustChangePassword: u.mustChangePassword,
+    user: userWithRole
+      ? {
+          id: userWithRole.id,
+          name: userWithRole.name,
+          email: userWithRole.email,
+          teamId: userWithRole.teamId,
+          isFounder: userWithRole.isFounder,
+          role: userWithRole.role.key,
+          roleName: userWithRole.role.name,
+          permissions: userWithRole.role.permissions,
+        }
+      : null,
+  });
 }

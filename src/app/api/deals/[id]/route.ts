@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, t } from "@/db";
 import { api } from "@/lib/api";
@@ -19,6 +19,53 @@ const patchSchema = z.object({
   lostReasonId: z.string().uuid().nullable().optional(), lostNotes: s, competitorId: z.string().uuid().nullable().optional(), note: s,
 });
 const FINANCIAL = ["mrr", "implementationFee", "stageId"];
+
+export const GET = api<{ id: string }>(["deal.view"], async (ctx, _r, { id }) => {
+  const deal = await getDealOr404(ctx, id);
+
+  const [institution, stage, owner, history, quotes, activities] = await Promise.all([
+    db.query.institutions.findFirst({
+      where: eq(t.institutions.id, deal.institutionId),
+      with: {
+        contacts: true,
+        taluka: true,
+      },
+    }),
+    db.query.pipelineStages.findFirst({
+      where: eq(t.pipelineStages.id, deal.stageId),
+    }),
+    db.query.users.findFirst({
+      where: eq(t.users.id, deal.ownerId),
+      columns: { id: true, name: true, email: true },
+    }),
+    db.query.dealStageHistory.findMany({
+      where: eq(t.dealStageHistory.dealId, id),
+      orderBy: desc(t.dealStageHistory.changedAt),
+    }),
+    db.query.quotes.findMany({
+      where: eq(t.quotes.dealId, id),
+      orderBy: desc(t.quotes.createdAt),
+    }),
+    db.query.activities.findMany({
+      where: eq(t.activities.dealId, id),
+      with: {
+        user: { columns: { id: true, name: true } },
+        contact: true,
+      },
+      orderBy: desc(t.activities.occurredAt),
+    }),
+  ]);
+
+  return {
+    deal,
+    institution,
+    stage,
+    owner,
+    history,
+    quotes,
+    activities,
+  };
+});
 
 export const PATCH = api<{ id: string }>(["deal.edit", "lead.assign"], async (ctx, _r, { id }) => {
   assertWritable(ctx);

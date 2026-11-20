@@ -1,10 +1,61 @@
-import { eq } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or, SQL } from "drizzle-orm";
 import { z } from "zod";
 import { db, t } from "@/db";
 import { api } from "@/lib/api";
-import { assertWritable, canAssignTo, getInstitutionOr404 } from "@/lib/access";
+import { assertWritable, canAssignTo, dealScope, getInstitutionOr404 } from "@/lib/access";
 import { audit } from "@/lib/audit";
 import { bad, forbidden } from "@/lib/errors";
+
+export const GET = api(["deal.view"], async (ctx, req) => {
+  const sp = req.nextUrl.searchParams;
+  const q = sp.get("q");
+  const stage = sp.get("stage");
+  const owner = sp.get("owner");
+  const category = sp.get("category");
+  const institutionId = sp.get("institutionId");
+
+  const conds: (SQL | undefined)[] = [dealScope(ctx)];
+  if (q) conds.push(or(ilike(t.deals.title, `%${q}%`), ilike(t.institutions.legalName, `%${q}%`)));
+  if (stage) conds.push(eq(t.deals.stageId, stage));
+  if (owner) conds.push(eq(t.deals.ownerId, owner));
+  if (category) conds.push(eq(t.deals.opportunityCategory, category));
+  if (institutionId) conds.push(eq(t.deals.institutionId, institutionId));
+
+  const deals = await db
+    .select({
+      id: t.deals.id,
+      title: t.deals.title,
+      stageId: t.deals.stageId,
+      stageName: t.pipelineStages.name,
+      stageKey: t.pipelineStages.key,
+      isOpen: t.pipelineStages.isOpen,
+      isWon: t.pipelineStages.isWon,
+      isLost: t.pipelineStages.isLost,
+      ownerId: t.deals.ownerId,
+      ownerName: t.users.name,
+      institutionId: t.deals.institutionId,
+      institutionName: t.institutions.legalName,
+      leadCode: t.institutions.leadCode,
+      mrr: t.deals.mrr,
+      implementationFee: t.deals.implementationFee,
+      opportunityCategory: t.deals.opportunityCategory,
+      nextAction: t.deals.nextAction,
+      followUpDate: t.deals.followUpDate,
+      founderFlag: t.deals.founderFlag,
+      founderFlagReason: t.deals.founderFlagReason,
+      financialsLocked: t.deals.financialsLocked,
+      createdAt: t.deals.createdAt,
+      stageChangedAt: t.deals.stageChangedAt,
+    })
+    .from(t.deals)
+    .innerJoin(t.institutions, eq(t.institutions.id, t.deals.institutionId))
+    .innerJoin(t.pipelineStages, eq(t.pipelineStages.id, t.deals.stageId))
+    .innerJoin(t.users, eq(t.users.id, t.deals.ownerId))
+    .where(and(...conds))
+    .orderBy(desc(t.deals.createdAt));
+
+  return { deals };
+});
 
 const d = z.preprocess((v) => (v === "" || v == null ? null : new Date(v as string)), z.date().nullable()).optional();
 export const POST = api(["deal.create"], async (ctx) => {

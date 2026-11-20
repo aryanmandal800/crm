@@ -19,7 +19,8 @@ export function api<P = Record<string, string>>(anyOf: Permission[] | null, fn: 
       if (req.method !== "GET" && req.method !== "HEAD") {
         const origin = req.headers.get("origin");
         const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
-        if (origin && host && new URL(origin).host !== host) throw new HttpError(403, "Cross-origin request blocked");
+        const isMobileOrApi = Boolean(req.headers.get("authorization") || req.headers.get("x-client-platform"));
+        if (!isMobileOrApi && origin && host && new URL(origin).host !== host) throw new HttpError(403, "Cross-origin request blocked");
       }
       ctx = await getCtx();
       if (!ctx) throw new HttpError(401, "Not signed in");

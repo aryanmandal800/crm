@@ -1,3 +1,4 @@
+import { and, asc, eq, or } from "drizzle-orm";
 import { z } from "zod";
 import { db, t } from "@/db";
 import { api } from "@/lib/api";
@@ -5,6 +6,30 @@ import { assertWritable, getInstitutionOr404 } from "@/lib/access";
 import { audit } from "@/lib/audit";
 import { forbidden } from "@/lib/errors";
 import { notify } from "@/lib/notify";
+
+export const GET = api(null, async (ctx, req) => {
+  const sp = req.nextUrl.searchParams;
+  const showAll = sp.get("all") === "1" && ctx.can("dashboard.founder");
+  const status = sp.get("status");
+
+  const whereClause = and(
+    status ? eq(t.tasks.status, status as any) : eq(t.tasks.status, "OPEN"),
+    showAll ? undefined : or(eq(t.tasks.assigneeId, ctx.user.id), eq(t.tasks.createdById, ctx.user.id))
+  );
+
+  const rows = await db.query.tasks.findMany({
+    where: whereClause,
+    with: {
+      assignee: { columns: { id: true, name: true, email: true } },
+      creator: { columns: { id: true, name: true, email: true } },
+      institution: { columns: { id: true, legalName: true, leadCode: true } },
+    },
+    orderBy: asc(t.tasks.dueAt),
+  });
+
+  return { tasks: rows };
+});
+
 const d = z.preprocess((v) => (v === "" || v == null ? null : new Date(v as string)), z.date().nullable()).optional();
 export const POST = api(null, async (ctx) => {
   assertWritable(ctx);
