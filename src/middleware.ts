@@ -10,10 +10,23 @@ export function middleware(req: NextRequest) {
     pathname === "/favicon.ico" ||
     /\.(png|svg|jpg|jpeg|gif|webp|ico)$/i.test(pathname)
   ) return NextResponse.next();
-  if (!req.cookies.get("fp_session")) {
+  const authHeader = req.headers.get("authorization");
+  const hasBearer = authHeader?.startsWith("Bearer ");
+  const hasCookie = Boolean(req.cookies.get("fp_session"));
+
+  if (!hasCookie && !hasBearer) {
     if (pathname.startsWith("/api/")) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
     const url = req.nextUrl.clone(); url.pathname = "/login"; url.search = ""; return NextResponse.redirect(url);
   }
+
+  // If mobile sends Bearer token but no cookie, copy it into request cookies for downstream getCtx
+  if (!hasCookie && hasBearer) {
+    const token = authHeader!.slice(7).trim();
+    const res = NextResponse.next();
+    res.cookies.set("fp_session", token);
+    return res;
+  }
+
   return NextResponse.next();
 }
 export const config = { matcher: ["/((?!_next/static|_next/image).*)"] };
