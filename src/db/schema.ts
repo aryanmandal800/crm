@@ -685,11 +685,69 @@ export const notifications = pgTable("notifications", {
   createdAt: created(),
 }, (t) => [index("notif_user").on(t.userId, t.readAt)]);
 
+// ───────────── User sessions & activity tracking ─────────────
+
+export const userSessions = pgTable("user_sessions", {
+  id: id(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenVersion: integer("token_version").notNull().default(0),
+  loginAt: ts("login_at").notNull().defaultNow(),
+  logoutAt: ts("logout_at"),
+  lastActiveAt: ts("last_active_at").notNull().defaultNow(),
+  durationSeconds: integer("duration_seconds").notNull().default(0),
+  ip: text("ip"),
+  city: text("city"),
+  region: text("region"),
+  country: text("country").default("India"),
+  postalCode: text("postal_code"),
+  isp: text("isp"),
+  address: text("address"),
+  latitude: numeric("latitude"),
+  longitude: numeric("longitude"),
+  deviceType: text("device_type").default("Desktop"),
+  browser: text("browser"),
+  os: text("os"),
+  userAgent: text("user_agent"),
+  status: text("status").notNull().default("ACTIVE"), // ACTIVE | LOGGED_OUT | TIMED_OUT
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: created(),
+  updatedAt: updated(),
+}, (t) => [
+  index("idx_user_sessions_user_login").on(t.userId, t.loginAt),
+  index("idx_user_sessions_status").on(t.status),
+  index("idx_user_sessions_last_active").on(t.lastActiveAt),
+]);
+
+export const userActivityLogs = pgTable("user_activity_logs", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  sessionId: uuid("session_id").references(() => userSessions.id, { onDelete: "set null" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userName: text("user_name").notNull(),
+  userEmail: text("user_email").notNull(),
+  roleKey: text("role_key").notNull(),
+  activityType: text("activity_type").notNull(), // PAGE_VIEW | ACTION | API_CALL | LOGIN | LOGOUT | FORM_SUBMIT | EXPORT | TASK | DEAL | LEAD
+  title: text("title").notNull(),
+  route: text("route"),
+  entityType: text("entity_type"),
+  entityId: text("entity_id"),
+  details: jsonb("details").$type<Record<string, unknown>>().default({}),
+  ip: text("ip"),
+  location: text("location"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [
+  index("idx_user_activity_user_time").on(t.userId, t.createdAt),
+  index("idx_user_activity_session").on(t.sessionId),
+  index("idx_user_activity_type").on(t.activityType),
+  index("idx_user_activity_created").on(t.createdAt),
+]);
+
 // ───────────── Relations (for the query API) ─────────────
 
-export const usersRelations = relations(users, ({ one }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   role: one(roles, { fields: [users.roleId], references: [roles.id] }),
   team: one(teams, { fields: [users.teamId], references: [teams.id] }),
+  sessions: many(userSessions),
+  activities: many(userActivityLogs),
 }));
 export const institutionsRelations = relations(institutions, ({ one, many }) => ({
   type: one(institutionTypes, { fields: [institutions.typeId], references: [institutionTypes.id] }),
@@ -761,4 +819,14 @@ export const taskActivityLogsRelations = relations(taskActivityLogs, ({ one }) =
 
 export const dailyEodReportsRelations = relations(dailyEodReports, ({ one }) => ({
   user: one(users, { fields: [dailyEodReports.userId], references: [users.id] }),
+}));
+
+export const userSessionsRelations = relations(userSessions, ({ one, many }) => ({
+  user: one(users, { fields: [userSessions.userId], references: [users.id] }),
+  activities: many(userActivityLogs),
+}));
+
+export const userActivityLogsRelations = relations(userActivityLogs, ({ one }) => ({
+  session: one(userSessions, { fields: [userActivityLogs.sessionId], references: [userSessions.id] }),
+  user: one(users, { fields: [userActivityLogs.userId], references: [users.id] }),
 }));

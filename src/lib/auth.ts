@@ -25,14 +25,16 @@ export function passwordProblem(p: string): string | null {
   return null;
 }
 
-export async function createSessionToken(userId: string, tokenVersion: number) {
-  return await new SignJWT({ tv: tokenVersion })
+export async function createSessionToken(userId: string, tokenVersion: number, sessionId?: string | null) {
+  const claims: Record<string, unknown> = { tv: tokenVersion };
+  if (sessionId) claims.sid = sessionId;
+  return await new SignJWT(claims)
     .setProtectedHeader({ alg: "HS256" }).setSubject(userId).setIssuedAt()
     .setExpirationTime(`${SESSION_HOURS}h`).sign(secret());
 }
 
-export async function issueSession(userId: string, tokenVersion: number) {
-  const jwt = await createSessionToken(userId, tokenVersion);
+export async function issueSession(userId: string, tokenVersion: number, sessionId?: string | null) {
+  const jwt = await createSessionToken(userId, tokenVersion, sessionId);
   (await cookies()).set(COOKIE, jwt, {
     httpOnly: true, sameSite: "lax", path: "/", maxAge: SESSION_HOURS * 3600,
     secure: process.env.COOKIE_SECURE !== "false" && process.env.NODE_ENV === "production",
@@ -53,6 +55,7 @@ export type Ctx = {
   grant: { scope: string; expiresAt: Date } | null; // active break-glass grant (tech admin)
   teamUserIds: string[];       // for TEAM scope
   ip: string | null;
+  sessionId: string | null;
 };
 
 /** Loads and validates the session on every request (revocation, disabled accounts, role changes take effect immediately). */
@@ -62,10 +65,12 @@ export async function getCtx(): Promise<Ctx | null> {
   const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
   const token = bearerToken || (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
-  let sub: string, tv: number;
+  let sub: string, tv: number, sid: string | null = null;
   try {
     const { payload } = await jwtVerify(token, secret());
-    sub = payload.sub as string; tv = payload.tv as number;
+    sub = payload.sub as string;
+    tv = payload.tv as number;
+    sid = (payload.sid as string) || null;
   } catch { return null; }
   const row = await db.query.users.findFirst({ where: eq(t.users.id, sub), with: { role: true } });
   if (!row || !row.active || row.tokenVersion !== tv) return null;
@@ -101,6 +106,7 @@ export async function getCtx(): Promise<Ctx | null> {
     role: { key: row.role.key, name: row.role.name },
     perms, can: (p) => perms.has(p), scope, grant, teamUserIds,
     ip: h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip"),
+    sessionId: sid,
   };
 }
 

@@ -27,6 +27,7 @@ const ITEMS: (NavItem & { any: Permission[] | "*" })[] = [
   { href: "/admin/users", label: "Users & teams", group: "Admin", any: ["users.manage", "users.support"] },
   { href: "/admin/roles", label: "Roles & permissions", group: "Admin", any: ["roles.manage"] },
   { href: "/admin/grants", label: "Data-access grants", group: "Admin", any: ["grants.manage"] },
+  { href: "/admin/staff-monitor", label: "Staff Activity & Login Monitor", group: "Admin", any: ["dashboard.founder", "audit.view"] },
   { href: "/admin/audit", label: "Audit log", group: "Admin", any: ["audit.view", "audit.view.technical"] },
   { href: "/tech", label: "Technical dashboard", group: "Admin", any: ["tech.dashboard"] },
 ];

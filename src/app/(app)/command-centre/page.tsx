@@ -3,6 +3,7 @@ import { desc, eq, inArray, sql } from "drizzle-orm";
 import { db, t } from "@/db";
 import { requirePage } from "@/lib/auth";
 import { activityKpis, dealLists, hotAtRisk, leadKpis, pipelineKpis, talukaCoverage, todayBySalesperson, tomorrowActions } from "@/lib/metrics";
+import { getStaffMonitoringData } from "@/lib/staffMonitor";
 import { addDays, dt, dtt, inr, num, startOfDay } from "@/lib/format";
 import { BandBadge, Card, PageHeader, Stat } from "@/components/ui";
 
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function CommandCentre() {
   await requirePage("dashboard.founder");
   const today = startOfDay(); const weekAgo = addDays(today, -6);
-  const [lk, pk, actToday, actWeek, people, lists, risk, talukas, actions, dmToday, demos, proposals, approvals] = await Promise.all([
+  const [lk, pk, actToday, actWeek, people, lists, risk, talukas, actions, dmToday, demos, proposals, approvals, staffMonitor] = await Promise.all([
     leadKpis(null), pipelineKpis(null), activityKpis(null, today), activityKpis(null, weekAgo), todayBySalesperson(null), dealLists(null), hotAtRisk(null), talukaCoverage(null), tomorrowActions(null),
     db.select({ a: t.activities, inst: t.institutions.legalName, contact: t.contacts.name, by: t.users.name }).from(t.activities).innerJoin(t.institutions, eq(t.institutions.id, t.activities.institutionId))
       .leftJoin(t.contacts, eq(t.contacts.id, t.activities.contactId)).innerJoin(t.users, eq(t.users.id, t.activities.userId))
@@ -20,6 +21,7 @@ export default async function CommandCentre() {
       .where(sql`${t.activities.typeKey} = 'DEMO' and ${t.activities.status} = 'PLANNED'`).orderBy(t.activities.occurredAt).limit(15),
     db.select({ q: t.quotes, inst: t.institutions.legalName }).from(t.quotes).innerJoin(t.institutions, eq(t.institutions.id, t.quotes.institutionId)).where(inArray(t.quotes.status, ["DRAFT", "PENDING_APPROVAL", "APPROVED", "SENT"])).orderBy(desc(t.quotes.createdAt)).limit(15),
     db.select({ n: sql<number>`count(*)::int` }).from(t.approvalRequests).where(eq(t.approvalRequests.status, "PENDING")),
+    getStaffMonitoringData({ range: "today", limit: 5 }),
   ]);
   const under = [...talukas].filter((x) => x.institutions > 0).sort((a, b) => a.coverage - b.coverage).slice(0, 5);
   const emptyTalukas = talukas.filter((x) => x.institutions === 0).map((x) => x.name);
@@ -49,6 +51,52 @@ export default async function CommandCentre() {
           <div className="text-xs text-ink-500">{p.calls} calls · {p.dms} DMs · {p.meetings} meetings/demos</div>{p.institutions && <div className="truncate text-xs text-ink-700">{p.institutions}</div>}</div>)}
         {!people.length && <p className="muted">No sales users yet. Add them in Users.</p>}
         <div className="mt-2 border-t border-ink-100 pt-2 text-xs text-ink-500">Today: {actToday.total} activities · {actToday.calls} calls · {actToday.dms} DMs<br />Last 7 days: {actWeek.total} activities · {actWeek.calls} calls · {actWeek.meetings} meetings · {actWeek.demos} demos</div>
+      </Card>
+
+      <Card
+        title="Live Staff Attendance & Activity (Tech & BDM)"
+        actions={<Link href="/admin/staff-monitor" className="text-xs font-semibold text-brand-600 hover:underline">Full Monitor →</Link>}
+        className="lg:col-span-3"
+      >
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {staffMonitor.staff.map((s) => (
+            <div key={s.id} className="rounded-lg border border-ink-100 p-2.5 bg-ink-50/40 hover:border-brand-300 transition">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${s.isOnline ? "bg-emerald-500 animate-pulse" : "bg-slate-300"}`} />
+                  <span className="font-semibold text-xs text-ink-900 truncate">{s.name}</span>
+                  <span className="text-[10px] bg-white border border-ink-200 px-1 py-0.2 rounded font-bold uppercase text-ink-600">
+                    {s.roleKey === "BDM" ? "BDM" : "TECH"}
+                  </span>
+                </div>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${s.isOnline ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>
+                  {s.isOnline ? "ONLINE NOW" : "OFFLINE"}
+                </span>
+              </div>
+              <div className="mt-2 text-xs text-ink-600 space-y-1">
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-ink-500">Today's Duration:</span>
+                  <span className="font-semibold text-ink-900">{s.todayDurationFormatted}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-ink-500">Login Location:</span>
+                  <span className="font-medium text-ink-800 truncate max-w-[170px]" title={s.lastAddress}>{s.lastAddress}</span>
+                </div>
+                {s.lastActionTitle && (
+                  <div className="text-[10px] text-ink-500 truncate pt-1 border-t border-ink-100">
+                    Last: <span className="text-ink-700">{s.lastActionTitle}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-2.5 flex items-center justify-between text-xs text-ink-500 border-t border-ink-100 pt-2">
+          <span>{staffMonitor.summary.currentlyOnline} of {staffMonitor.summary.totalMonitoredStaff} staff currently active online · {staffMonitor.summary.totalHoursTodayFormatted} total logged-in hours today</span>
+          <Link href="/admin/staff-monitor" className="text-brand-600 font-semibold hover:underline">
+            View all login/logout history, durations & detailed logs →
+          </Link>
+        </div>
       </Card>
 
       <Card title="7 · Needs founder intervention">
